@@ -15,7 +15,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: "jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:playedu}?useUnicode=true&characterEncoding=UTF-8&autoReconnect=true&useSSL=false&allowPublicKeyRetrieval=true"
     username: ${DB_USER:root}
-    password: ${DB_PASS:}
+    password: ${DB_PASS:123456}
     type: com.zaxxer.hikari.HikariDataSource
     hikari:
       minimum-idle: ${DB_POOL_MIN_IDLE:1}              # 最小连接数
