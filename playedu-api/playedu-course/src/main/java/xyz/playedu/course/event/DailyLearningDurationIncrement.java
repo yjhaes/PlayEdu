@@ -13,23 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.playedu.api.cache;
+package xyz.playedu.course.event;
 
-import java.util.concurrent.TimeUnit;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-import xyz.playedu.common.redis.RedisDistributedLock;
+import java.time.LocalDate;
 
-@Component
-public class LoginLockCache {
-
-    @Autowired private RedisDistributedLock distributedLock;
-
-    public boolean apply(String username) {
-        return distributedLock.tryLock("login", username, 0, 10L, TimeUnit.SECONDS);
-    }
-
-    public void release(String username) {
-        distributedLock.release("login", username);
-    }
-}
+/** One confirmed portion of learning duration belonging to a natural day. */
+public record DailyLearningDurationIncrement(LocalDate learningDate, long duration) {}

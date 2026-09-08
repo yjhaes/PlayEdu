@@ -34,6 +34,12 @@ cd playedu && docker-compose up -d
 - H5 端口 `http://localhost:9801`
 - API 端口 `http://localhost:9700`
 
+## Redis 运行时
+
+Redis 是应用的强制依赖。`docker compose up -d --build` 会同时启动单节点 Redis；默认本地实例不启用认证，也不依赖持久化，排行榜以外的短期运行状态在 Redis 重启后不会恢复。
+
+通过未提交的 `.env` 覆盖 `PLAYEDU_REDIS_HOST`、`PLAYEDU_REDIS_PORT`、`PLAYEDU_REDIS_PASSWORD` 和 `PLAYEDU_REDIS_DATABASE`，即可让应用改连外部 Redis。启动时 Redis 不可用会使应用启动失败；连接状态和失败原因可从 `/actuator/health` 查看。
+
 ## 🔰️ 软件安全
 
 安全问题应该通过邮件私下报告给 tengyongzhi@playeduos.com。 您将在 24 小时内收到回复，如果因为某些原因您没有收到回复，请通过回复原始邮件的方式跟进，以确保我们收到了您的原始邮件。

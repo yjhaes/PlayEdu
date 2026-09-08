@@ -13,39 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.playedu.api.event;
+package xyz.playedu.course.event;
 
+import java.time.LocalDate;
 import lombok.Getter;
-import lombok.Setter;
 import org.springframework.context.ApplicationEvent;
 
-/**
- * @Author 杭州白书科技有限公司
- *
- * @create 2023/3/22 14:14
- */
-@Setter
+/** The confirmed daily increment available to the asynchronous ranking projection. */
 @Getter
-public class UserLearnCourseUpdateEvent extends ApplicationEvent {
+public class DailyLearningDurationConfirmedEvent extends ApplicationEvent {
 
-    private Integer userId;
-    private Integer courseId;
-    private Integer hourId;
-    private Long startAt;
-    private Long endAt;
+    private final Integer userId;
+    private final LocalDate learningDate;
+    private final Long duration;
 
-    public UserLearnCourseUpdateEvent(
-            Object source,
-            Integer userId,
-            Integer courseId,
-            Integer hourId,
-            Long startTime,
-            Long endTime) {
+    public DailyLearningDurationConfirmedEvent(
+            Object source, Integer userId, LocalDate learningDate, Long duration) {
         super(source);
         this.userId = userId;
-        this.courseId = courseId;
-        this.hourId = hourId;
-        this.startAt = startTime;
-        this.endAt = endTime;
+        this.learningDate = learningDate;
+        this.duration = duration;
     }
 }

@@ -17,25 +17,20 @@ package xyz.playedu.api.controller.frontend;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.concurrent.TimeUnit;
 import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import xyz.playedu.api.event.UserCourseHourFinishedEvent;
-import xyz.playedu.api.event.UserLearnCourseUpdateEvent;
 import xyz.playedu.api.request.frontend.CourseHourRecordRequest;
 import xyz.playedu.common.context.FCtx;
 import xyz.playedu.common.types.JsonResponse;
-import xyz.playedu.common.util.MemoryDistributedLock;
 import xyz.playedu.course.caches.UserCanSeeCourseCache;
-import xyz.playedu.course.caches.UserLastLearnTimeCache;
 import xyz.playedu.course.domain.Course;
 import xyz.playedu.course.domain.CourseHour;
 import xyz.playedu.course.domain.UserCourseHourRecord;
 import xyz.playedu.course.service.CourseHourService;
 import xyz.playedu.course.service.CourseService;
+import xyz.playedu.course.service.LearningFactPersistenceService;
 import xyz.playedu.course.service.UserCourseHourRecordService;
 import xyz.playedu.resource.domain.Resource;
 import xyz.playedu.resource.service.ResourceService;
@@ -60,11 +55,7 @@ public class HourController {
     // ------- CACHE ----------
     @Autowired private UserCanSeeCourseCache userCanSeeCourseCache;
 
-    @Autowired private MemoryDistributedLock distributedLock;
-
-    @Autowired private UserLastLearnTimeCache userLastLearnTimeCache;
-
-    @Autowired private ApplicationContext ctx;
+    @Autowired private LearningFactPersistenceService learningFactPersistenceService;
 
     @GetMapping("/{id}")
     @SneakyThrows
@@ -119,36 +110,7 @@ public class HourController {
             @PathVariable(name = "courseId") Integer courseId,
             @PathVariable(name = "id") Integer id,
             @RequestBody @Validated CourseHourRecordRequest req) {
-        Integer duration = req.getDuration();
-        if (duration <= 0) {
-            return JsonResponse.error("duration参数错误");
-        }
-
-        CourseHour hour = hourService.findOrFail(id, courseId);
-        userCanSeeCourseCache.check(FCtx.getId(), courseId, true);
-
-        // 获取锁
-        String lockKey = String.format("record:%d", FCtx.getId());
-        boolean tryLock = distributedLock.tryLock(lockKey, 5, TimeUnit.SECONDS);
-        if (!tryLock) {
-            return JsonResponse.success();
-        }
-
-        try {
-            boolean isFinished =
-                    userCourseHourRecordService.storeOrUpdate(
-                            FCtx.getId(), courseId, hour.getId(), duration, hour.getDuration());
-            if (isFinished) {
-                ctx.publishEvent(
-                        new UserCourseHourFinishedEvent(
-                                this, FCtx.getId(), courseId, hour.getId()));
-            }
-        } finally {
-            // 此处未考虑上面代码执行失败释放锁
-            distributedLock.releaseLock(lockKey);
-        }
-
-        return JsonResponse.success();
+        return recordLearningFact(courseId, id, req);
     }
 
     @PostMapping("/{id}/ping")
@@ -157,33 +119,21 @@ public class HourController {
             @PathVariable(name = "courseId") Integer courseId,
             @PathVariable(name = "id") Integer id) {
         userCanSeeCourseCache.check(FCtx.getId(), courseId, true);
+        return JsonResponse.success();
+    }
 
-        // 获取锁
-        String lockKey = String.format("ping:%d", FCtx.getId());
-        boolean tryLock = distributedLock.tryLock(lockKey, 5, TimeUnit.SECONDS);
-        if (!tryLock) {
-            return JsonResponse.success();
+    @SneakyThrows
+    private JsonResponse recordLearningFact(
+            Integer courseId, Integer hourId, CourseHourRecordRequest request) {
+        Integer duration = request.getDuration();
+        if (duration <= 0) {
+            return JsonResponse.error("duration参数错误");
         }
 
-        try {
-            Long curTime = System.currentTimeMillis();
-
-            // 最近一次学习时间
-            Long lastTime = userLastLearnTimeCache.get(FCtx.getId());
-            // 最大周期为10s+0.5s的网络延迟
-            if (lastTime == null || curTime - lastTime > 10500) {
-                lastTime = curTime - 10000;
-            }
-
-            userLastLearnTimeCache.put(FCtx.getId(), curTime);
-
-            ctx.publishEvent(
-                    new UserLearnCourseUpdateEvent(
-                            this, FCtx.getId(), courseId, id, lastTime, curTime));
-        } finally {
-            // 此处未考虑上面代码执行失败释放锁
-            distributedLock.releaseLock(lockKey);
-        }
+        CourseHour hour = hourService.findOrFail(hourId, courseId);
+        userCanSeeCourseCache.check(FCtx.getId(), courseId, true);
+        learningFactPersistenceService.record(
+                FCtx.getId(), courseId, hour.getId(), duration, hour.getDuration());
 
         return JsonResponse.success();
     }

@@ -16,7 +16,9 @@
 package xyz.playedu.course.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import java.util.Date;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import xyz.playedu.course.domain.UserLearnDurationStats;
 
 /**
@@ -28,4 +30,11 @@ import xyz.playedu.course.domain.UserLearnDurationStats;
 public interface UserLearnDurationStatsMapper extends BaseMapper<UserLearnDurationStats> {
 
     Long getUserDuration(Integer userId);
+
+    Long totalByDate(@Param("createdDate") Date createdDate);
+
+    void increment(
+            @Param("userId") Integer userId,
+            @Param("createdDate") Date createdDate,
+            @Param("duration") Long duration);
 }

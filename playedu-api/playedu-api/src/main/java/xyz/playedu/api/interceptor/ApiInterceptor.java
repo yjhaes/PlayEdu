@@ -24,7 +24,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import xyz.playedu.common.config.PlayEduConfig;
 import xyz.playedu.common.constant.BackendConstant;
-import xyz.playedu.common.service.RateLimiterService;
+import xyz.playedu.common.redis.ApiRequestRateLimiter;
 import xyz.playedu.common.types.JsonResponse;
 import xyz.playedu.common.util.HelperUtil;
 import xyz.playedu.common.util.IpUtil;
@@ -34,7 +34,7 @@ import xyz.playedu.common.util.IpUtil;
 @Order(10)
 public class ApiInterceptor implements HandlerInterceptor {
 
-    @Autowired private RateLimiterService rateLimiterService;
+    @Autowired private ApiRequestRateLimiter apiRequestRateLimiter;
 
     @Autowired private PlayEduConfig playEduConfig;
 
@@ -54,13 +54,14 @@ public class ApiInterceptor implements HandlerInterceptor {
         }
 
         // 限流判断
-        String reqCountKey = "api-limiter:" + IpUtil.getIpAddress();
-        Long reqCount = rateLimiterService.current(reqCountKey, playEduConfig.getLimiterDuration());
         long limitCount = playEduConfig.getLimiterLimit();
-        long limitRemaining = limitCount - reqCount;
+        ApiRequestRateLimiter.RateLimitDecision decision =
+                apiRequestRateLimiter.acquire(
+                        IpUtil.getIpAddress(), limitCount, playEduConfig.getLimiterDuration());
+        long limitRemaining = decision.remaining();
         response.setHeader("X-RateLimit-Limit", String.valueOf(limitCount));
         response.setHeader("X-RateLimit-Remaining", String.valueOf(limitRemaining));
-        if (limitRemaining <= 0) {
+        if (!decision.allowed()) {
             response.setStatus(429);
             response.setContentType("application/json;charset=utf-8");
             response.getWriter().print(HelperUtil.toJsonStr(JsonResponse.error("太多请求")));

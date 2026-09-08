@@ -25,14 +25,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import xyz.playedu.common.annotation.Lock;
 import xyz.playedu.common.exception.LimitException;
-import xyz.playedu.common.util.MemoryDistributedLock;
+import xyz.playedu.common.redis.RedisDistributedLock;
 
 @Aspect
 @Component
 public class LockAspect {
-    @Autowired private MemoryDistributedLock distributedLock;
+    @Autowired private RedisDistributedLock distributedLock;
 
-    public LockAspect(MemoryDistributedLock distributedLock) {
+    public LockAspect(RedisDistributedLock distributedLock) {
         this.distributedLock = distributedLock;
     }
 
@@ -44,14 +44,14 @@ public class LockAspect {
         String key = lock.key();
         long expire = lock.expire();
         TimeUnit timeUnit = lock.timeUnit();
-        boolean success = distributedLock.tryLock(key, expire, timeUnit);
+        boolean success = distributedLock.tryLock("aspect", key, 0, expire, timeUnit);
         if (!success) {
             throw new LimitException("请稍后再试");
         }
         try {
             return joinPoint.proceed();
         } finally {
-            distributedLock.releaseLock(key);
+            distributedLock.release("aspect", key);
         }
     }
 }

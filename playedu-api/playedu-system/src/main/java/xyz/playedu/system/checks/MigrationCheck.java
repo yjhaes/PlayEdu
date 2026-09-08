@@ -25,6 +25,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import xyz.playedu.system.migration.UserLearnDurationStatsMigration;
 import xyz.playedu.system.service.MigrationService;
 
 @Order(10)
@@ -843,6 +844,8 @@ public class MigrationCheck implements CommandLineRunner {
 
     @Autowired private MigrationService migrationService;
 
+    @Autowired private UserLearnDurationStatsMigration userLearnDurationStatsMigration;
+
     @Override
     public void run(String... args) throws Exception {
         try {
@@ -874,8 +877,14 @@ public class MigrationCheck implements CommandLineRunner {
                 migrationService.store(migrationName);
             }
 
+            if (!migrations.contains(UserLearnDurationStatsMigration.MIGRATION_NAME)) {
+                userLearnDurationStatsMigration.migrate(jdbcTemplate);
+                migrationService.store(UserLearnDurationStatsMigration.MIGRATION_NAME);
+            }
+
         } catch (Exception e) {
-            log.error("数据库迁移执行失败,错误信息:" + e.getMessage());
+            log.error("数据库迁移执行失败", e);
+            throw new IllegalStateException("数据库迁移执行失败", e);
         }
     }
 }

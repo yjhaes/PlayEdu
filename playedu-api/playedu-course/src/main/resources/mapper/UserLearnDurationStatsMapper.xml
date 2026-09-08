@@ -20,4 +20,14 @@
         FROM `user_learn_duration_stats`
         where `user_id` = #{userId};
     </select>
+    <select id="totalByDate" resultType="java.lang.Long">
+        SELECT sum(`duration`)
+        FROM `user_learn_duration_stats`
+        WHERE `created_date` = #{createdDate, jdbcType=DATE}
+    </select>
+    <insert id="increment">
+        INSERT INTO `user_learn_duration_stats` (`user_id`, `duration`, `created_date`)
+        VALUES (#{userId}, #{duration}, #{createdDate, jdbcType=DATE})
+        ON DUPLICATE KEY UPDATE `duration` = `duration` + VALUES(`duration`)
+    </insert>
 </mapper>

@@ -18,6 +18,7 @@ package xyz.playedu.course.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import java.util.List;
 import xyz.playedu.course.domain.UserLearnDurationStats;
+import xyz.playedu.course.event.DailyLearningDurationIncrement;
 
 /**
  * @author tengteng
@@ -25,7 +26,8 @@ import xyz.playedu.course.domain.UserLearnDurationStats;
  * @createDate 2023-03-22 13:55:29
  */
 public interface UserLearnDurationStatsService extends IService<UserLearnDurationStats> {
-    void storeOrUpdate(Integer userId, Long startTime, Long endTime);
+    List<DailyLearningDurationIncrement> storeOrUpdate(
+            Integer userId, Long startTime, Long endTime);
 
     Long todayTotal();
 

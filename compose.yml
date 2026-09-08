@@ -28,6 +28,12 @@ services:
       - DB_POOL_CONN_TIMEOUT=${PLAYEDU_DB_POOL_CONN_TIMEOUT:-30000}
       - DB_POOL_IDLE_TIMEOUT=${PLAYEDU_DB_POOL_IDLE_TIMEOUT:-600000}
       - DB_POOL_MAX_LIFETIME=${PLAYEDU_DB_POOL_MAX_LIFETIME:-1800000}
+      - REDIS_HOST=${PLAYEDU_REDIS_HOST:-redis}
+      - REDIS_PORT=${PLAYEDU_REDIS_PORT:-6379}
+      - REDIS_PASSWORD=${PLAYEDU_REDIS_PASSWORD:-}
+      - REDIS_DATABASE=${PLAYEDU_REDIS_DATABASE:-0}
+      - REDIS_TIMEOUT=${PLAYEDU_REDIS_TIMEOUT:-2s}
+      - REDIS_CONNECT_TIMEOUT=${PLAYEDU_REDIS_CONNECT_TIMEOUT:-2s}
       - SA_TOKEN_IS_CONCURRENT=${PLAYEDU_SA_TOKEN_IS_CONCURRENT:-false}
       - SA_TOKEN_JWT_SECRET_KEY=${PLAYEDU_JWT_KEY:-playeduxyz}
       - TZ=${PLAYEDU_TZ:-Asia/Shanghai}
@@ -40,7 +46,10 @@ services:
     networks:
       - playedu
     depends_on:
-      - mysql
+      mysql:
+        condition: service_started
+      redis:
+        condition: service_healthy
     logging: *default-logging
 
   mysql:
@@ -56,4 +65,32 @@ services:
       - "${MYSQL_PORT:-23307}:3306"
     networks:
       - playedu
+    logging: *default-logging
+
+  redis:
+    image: redis:7.4-alpine
+    restart: always
+    command:
+      - sh
+      - -c
+      - |
+        if [ -n "$$REDIS_PASSWORD" ]; then
+          exec redis-server --save "" --appendonly no --requirepass "$$REDIS_PASSWORD"
+        fi
+        exec redis-server --save "" --appendonly no
+    environment:
+      - REDIS_PASSWORD=${PLAYEDU_REDIS_PASSWORD:-}
+    ports:
+      - "${PLAYEDU_REDIS_EXPOSED_PORT:-6379}:6379"
+    networks:
+      - playedu
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          if [ -n "$$REDIS_PASSWORD" ]; then redis-cli -a "$$REDIS_PASSWORD" ping;
+          else redis-cli ping; fi
+      interval: 5s
+      timeout: 3s
+      retries: 10
     logging: *default-logging

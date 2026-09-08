@@ -24,6 +24,14 @@ spring:
       idle-timeout: ${DB_POOL_IDLE_TIMEOUT:600000}     # 空闲连接超时时间(ms)
       max-lifetime: ${DB_POOL_MAX_LIFETIME:1800000}    # 连接最大存活时间(ms)
       auto-commit: true                                # 自动提交
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: ${REDIS_TIMEOUT:2s}
+      connect-timeout: ${REDIS_CONNECT_TIMEOUT:2s}
   # 线程池配置
   task:
     execution:
@@ -55,6 +63,8 @@ sa-token:
   log-level: "warn"
 
 playedu:
+  redis:
+    key-prefix: ${PLAYEDU_REDIS_KEY_PREFIX:playedu}
   core:
     testing: false
   limiter:
@@ -65,3 +75,12 @@ playedu:
     # 跳过 S3 文件删除，用于配合 DB 定时恢复搭建演示站。
     # 通过环境变量 DEMO_MODE 控制（docker-compose 里映射为 PLAYEDU_DEMO_MODE）。
     enabled: ${DEMO_MODE:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
