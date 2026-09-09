@@ -15,16 +15,35 @@ export function playUrl(courseId: number, hourId: number) {
   return client.get(`/api/v1/course/${courseId}/hour/${hourId}/play`, {});
 }
 
-// 记录学员观看时长
-export function record(courseId: number, hourId: number, duration: number) {
-  return client.post(`/api/v1/course/${courseId}/hour/${hourId}/record`, {
-    duration,
+//观看ping
+export function playPing(
+  courseId: number,
+  hourId: number,
+  sessionId?: string
+) {
+  return client.post(`/api/v1/course/${courseId}/hour/${hourId}/ping`, {
+    ...(sessionId ? { session_id: sessionId } : {}),
   });
 }
 
-//观看ping
-export function playPing(courseId: number, hourId: number) {
-  return client.post(`/api/v1/course/${courseId}/hour/${hourId}/ping`, {});
+// 主动停止学习
+export function stopPing(courseId: number, hourId: number, sessionId: string) {
+  return client.request({
+    method: "DELETE",
+    url: `/api/v1/course/${courseId}/hour/${hourId}/ping`,
+    data: { session_id: sessionId },
+  });
+}
+
+// 页面卸载时尽力释放学习租约
+export function stopPingBestEffort(
+  courseId: number,
+  hourId: number,
+  sessionId: string
+) {
+  return client.keepalive(`/api/v1/course/${courseId}/hour/${hourId}/ping`, {
+    session_id: sessionId,
+  });
 }
 
 //最近学习课程

@@ -32,6 +32,13 @@
       font-size: 18px;
       color: white;
       z-index: 100;
+      .des-video {
+        max-width: 90%;
+        margin-bottom: 20px;
+        font-size: 14px;
+        line-height: 20px;
+        text-align: center;
+      }
       .alert-button {
         box-sizing: border-box;
         padding: 0px 15px;

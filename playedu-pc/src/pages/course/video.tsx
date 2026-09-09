@@ -5,20 +5,27 @@ import { useSelector } from "react-redux";
 import { course as Course } from "../../api/index";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { message } from "antd";
-import { getPlayId, savePlayId } from "../../utils";
+import { LearningLeaseController } from "../../utils/learningLease";
 
 declare const window: any;
-var timer: any = null;
+
+const LEARNING_CONFLICT_MESSAGE =
+  "当前已有其他课时正在学习，请先暂停或结束其他视频";
+const LEARNING_SESSION_MESSAGE = "学习会话已失效，请点击播放重试";
+const LEARNING_UNAVAILABLE_MESSAGE =
+  "学习服务暂时不可用，请检查网络后点击重试";
 
 const CoursePalyPage = () => {
   const navigate = useNavigate();
   const params = useParams();
   const systemConfig = useSelector((state: any) => state.systemConfig.value);
   const user = useSelector((state: any) => state.loginUser.value.user);
+  const courseId = Number(params.courseId);
+  const hourId = Number(params.hourId);
+  const routeKey = `${courseId}-${hourId}`;
   const [playUrl, setPlayUrl] = useState("");
-  const [playDuration, setPlayDuration] = useState(0);
   const [playendedStatus, setPlayendedStatus] = useState(false);
-  const [lastSeeValue, setLastSeeValue] = useState({});
+  const [lastSeeValue, setLastSeeValue] = useState<any>({});
   const [course, setCourse] = useState<CourseModel | null>(null);
   const [hour, setHour] = useState<HourModel | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,24 +34,115 @@ const CoursePalyPage = () => {
   const [playingTime, setPlayingTime] = useState(0);
   const [watchedSeconds, setWatchedSeconds] = useState(0);
   const [resourceUrl, setResourceUrl] = useState<ResourceUrlModel>({});
-  const myRef = useRef(0);
+  const [leaseMessage, setLeaseMessage] = useState("");
   const playRef = useRef(0);
   const watchRef = useRef(0);
   const totalRef = useRef(0);
-  const [checkPlayerStatus, setCheckPlayerStatus] = useState(false);
+  const playerRef = useRef<any>(null);
+  const routeKeyRef = useRef(routeKey);
+  const leaseControllerRef = useRef<LearningLeaseController | null>(null);
+  const suppressPauseStopRef = useRef(false);
+
+  routeKeyRef.current = routeKey;
+
+  const destroyPlayer = () => {
+    const player = playerRef.current;
+    if (!player) {
+      return;
+    }
+    player.destroy();
+    if (window.player === player) {
+      window.player = null;
+    }
+    playerRef.current = null;
+    suppressPauseStopRef.current = false;
+  };
+
+  const pauseForLeaseIssue = () => {
+    const player = playerRef.current;
+    if (player?.video && !player.video.paused) {
+      suppressPauseStopRef.current = true;
+      player.video.pause();
+    } else {
+      suppressPauseStopRef.current = false;
+    }
+  };
+
+  const retryPlayback = () => {
+    const player = playerRef.current;
+    if (!player?.video) {
+      return;
+    }
+    setLeaseMessage("");
+    const playPromise = player.video.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      void playPromise.catch(() => undefined);
+    }
+  };
 
   useEffect(() => {
-    timer && clearInterval(timer);
+    const controller = new LearningLeaseController(
+      {
+        heartbeat: async (sessionId?: string) => {
+          const response: any = await Course.playPing(
+            courseId,
+            hourId,
+            sessionId
+          );
+          return response.data;
+        },
+        stop: (sessionId: string) =>
+          Course.stopPing(courseId, hourId, sessionId),
+        stopBestEffort: (sessionId: string) =>
+          Course.stopPingBestEffort(courseId, hourId, sessionId),
+      },
+      {
+        onStatusChange: (status) => {
+          if (status === "acquiring") {
+            setLeaseMessage("");
+          }
+        },
+        onConflict: () => {
+          setLeaseMessage(LEARNING_CONFLICT_MESSAGE);
+          pauseForLeaseIssue();
+        },
+        onInvalidSession: () => {
+          setLeaseMessage(LEARNING_SESSION_MESSAGE);
+          pauseForLeaseIssue();
+        },
+        onUnavailable: () => {
+          setLeaseMessage(LEARNING_UNAVAILABLE_MESSAGE);
+          pauseForLeaseIssue();
+        },
+      }
+    );
+    leaseControllerRef.current = controller;
+
+    const releaseOnPageHide = () => controller.dispose();
+    window.addEventListener("pagehide", releaseOnPageHide);
+
+    return () => {
+      window.removeEventListener("pagehide", releaseOnPageHide);
+      controller.dispose();
+      if (leaseControllerRef.current === controller) {
+        leaseControllerRef.current = null;
+      }
+    };
+  }, [courseId, hourId]);
+
+  useEffect(() => {
+    setPlayendedStatus(false);
+    setLeaseMessage("");
+    setLastSeeValue({});
+    setPlayingTime(0);
+    setWatchedSeconds(0);
     getCourse();
     getDetail();
-    return () => {
-      timer && clearInterval(timer);
-    };
-  }, [params.courseId, params.hourId]);
 
-  useEffect(() => {
-    myRef.current = playDuration;
-  }, [playDuration]);
+    return () => {
+      destroyPlayer();
+    };
+  }, [routeKey]);
 
   useEffect(() => {
     playRef.current = playingTime;
@@ -59,7 +157,7 @@ const CoursePalyPage = () => {
   }, [hour]);
 
   const getCourse = () => {
-    Course.detail(Number(params.courseId)).then((res: any) => {
+    Course.detail(courseId).then((res: any) => {
       let totalHours: HourModel[] = [];
       if (res.data.chapters.length === 0) {
         setTotalHours(res.data.hours[0]);
@@ -67,19 +165,15 @@ const CoursePalyPage = () => {
       } else if (res.data.chapters.length > 0) {
         const arr: HourModel[] = [];
         for (let key in res.data.hours) {
-          res.data.hours[key].map((item: any) => {
+          res.data.hours[key].map((item: HourModel) => {
             arr.push(item);
           });
         }
         setTotalHours(arr);
         totalHours = arr;
       }
-      const index = totalHours.findIndex(
-        (i: any) => i.id === Number(params.hourId)
-      );
-      if (index === totalHours.length - 1) {
-        setIsLastpage(true);
-      }
+      const index = totalHours.findIndex((i) => i.id === hourId);
+      setIsLastpage(index === totalHours.length - 1);
     });
   };
 
@@ -88,12 +182,15 @@ const CoursePalyPage = () => {
       return true;
     }
     setLoading(true);
-    Course.play(Number(params.courseId), Number(params.hourId))
+    Course.play(courseId, hourId)
       .then((res: any) => {
+        if (routeKeyRef.current !== routeKey) {
+          return;
+        }
         setCourse(res.data.course);
         setHour(res.data.hour);
         document.title = res.data.hour.title;
-        let record: HourRecordModel = res.data.user_hour_record;
+        const record: HourRecordModel = res.data.user_hour_record;
         let params = null;
         if (record && record.finished_duration && record.is_finished === 0) {
           params = {
@@ -101,40 +198,38 @@ const CoursePalyPage = () => {
             pos: record.finished_duration,
           };
           setLastSeeValue(params);
-          setLastSeeValue(params);
           setWatchedSeconds(record.finished_duration);
         } else if (record && record.is_finished === 1) {
           setWatchedSeconds(res.data.hour.duration);
         }
         getVideoUrl(res.data.hour.rid, params);
-        setLoading(false);
       })
-      .catch((e) => {
-        setLoading(false);
+      .catch(() => undefined)
+      .finally(() => {
+        if (routeKeyRef.current === routeKey) {
+          setLoading(false);
+        }
       });
   };
 
   const getVideoUrl = (rid: number, data: any) => {
-    Course.playUrl(Number(params.courseId), Number(params.hourId)).then(
-      (res: any) => {
-        setResourceUrl(res.data.resource_url[rid]);
-        setPlayUrl(res.data.resource_url[rid]);
-        initDPlayer(res.data.resource_url[rid], 0, data);
-        savePlayId(String(params.courseId) + "-" + String(params.hourId));
+    Course.playUrl(courseId, hourId).then((res: any) => {
+      if (routeKeyRef.current !== routeKey) {
+        return;
       }
-    );
+      destroyPlayer();
+      setResourceUrl(res.data.resource_url);
+      setPlayUrl(res.data.resource_url[rid]);
+      initDPlayer(res.data.resource_url[rid], 0, data);
+    });
   };
 
-  const initDPlayer = (playUrl: string, isTrySee: number, params: any) => {
-    let banDrag =
-      systemConfig.playerIsDisabledDrag &&
-      watchRef.current < totalRef.current &&
-      watchRef.current === 0;
-    window.player = new window.DPlayer({
+  const initDPlayer = (url: string, isTrySee: number, params: any) => {
+    const player = new window.DPlayer({
       container: document.getElementById("meedu-player-container"),
       autoplay: false,
       video: {
-        url: playUrl,
+        url,
         pic: systemConfig.playerPoster,
       },
       try: isTrySee === 1,
@@ -148,12 +243,41 @@ const CoursePalyPage = () => {
         color: systemConfig.playerBulletSecretColor || "red",
         opacity: Number(systemConfig.playerBulletSecretOpacity),
       },
-      ban_drag: banDrag,
+      ban_drag:
+        systemConfig.playerIsDisabledDrag &&
+        watchRef.current < totalRef.current &&
+        watchRef.current === 0,
       last_see_pos: params,
     });
-    // 监听播放进度更新evt
-    window.player.on("timeupdate", () => {
-      let currentTime = parseInt(window.player.video.currentTime);
+    playerRef.current = player;
+    window.player = player;
+
+    const isCurrentPlayer = () =>
+      routeKeyRef.current === routeKey && playerRef.current === player;
+
+    player.on("play", () => {
+      if (!isCurrentPlayer()) {
+        return;
+      }
+      void leaseControllerRef.current?.start();
+    });
+
+    player.on("pause", () => {
+      if (!isCurrentPlayer()) {
+        return;
+      }
+      if (suppressPauseStopRef.current) {
+        suppressPauseStopRef.current = false;
+        return;
+      }
+      void leaseControllerRef.current?.stop();
+    });
+
+    player.on("timeupdate", () => {
+      if (!isCurrentPlayer()) {
+        return;
+      }
+      const currentTime = parseInt(player.video.currentTime);
       if (
         systemConfig.playerIsDisabledDrag &&
         watchRef.current < totalRef.current &&
@@ -161,73 +285,50 @@ const CoursePalyPage = () => {
         currentTime > watchRef.current
       ) {
         message.warning("首次学习禁止快进");
-        window.player.seek(watchRef.current);
+        player.seek(watchRef.current);
       } else {
         setPlayingTime(currentTime);
-        playTimeUpdate(parseInt(window.player.video.currentTime), false);
       }
     });
-    window.player.on("ended", () => {
+
+    player.on("ended", () => {
+      if (!isCurrentPlayer()) {
+        return;
+      }
       if (
         systemConfig.playerIsDisabledDrag &&
         watchRef.current < totalRef.current &&
-        window.player.video.duration - playRef.current >= 2
+        player.video.duration - playRef.current >= 2
       ) {
-        window.player.seek(playRef.current);
+        player.seek(playRef.current);
         return;
       }
       setPlayingTime(0);
       setPlayendedStatus(true);
-      playTimeUpdate(parseInt(window.player.video.currentTime), true);
+      void leaseControllerRef.current?.stop();
       exitFullscreen();
-      window.player && window.player.destroy();
+      destroyPlayer();
     });
     setLoading(false);
-    checkPlayer();
-  };
-
-  const playTimeUpdate = (duration: number, isEnd: boolean) => {
-    if (duration - myRef.current >= 10 || isEnd === true) {
-      setPlayDuration(duration);
-      Course.record(
-        Number(params.courseId),
-        Number(params.hourId),
-        duration
-      ).then((res: any) => {});
-      Course.playPing(Number(params.courseId), Number(params.hourId)).then(
-        (res: any) => {}
-      );
-    }
-  };
-
-  const checkPlayer = () => {
-    timer = setInterval(() => {
-      let playId = getPlayId();
-      if (
-        playId &&
-        playId !== String(params.courseId) + "-" + String(params.hourId)
-      ) {
-        timer && clearInterval(timer);
-        window.player && window.player.destroy();
-        setCheckPlayerStatus(true);
-      } else {
-        setCheckPlayerStatus(false);
-      }
-    }, 5000);
   };
 
   const goNextVideo = () => {
-    const index = totalHours.findIndex(
-      (i: any) => i.id === Number(params.hourId)
-    );
+    const index = totalHours.findIndex((i) => i.id === hourId);
     if (index === totalHours.length - 1) {
       setIsLastpage(true);
       message.error("已经是最后一节了！");
     } else if (index < totalHours.length - 1) {
-      navigate(`/course/${params.courseId}/hour/${totalHours[index + 1].id}`, {
+      void leaseControllerRef.current?.stop();
+      navigate(`/course/${courseId}/hour/${totalHours[index + 1].id}`, {
         replace: true,
       });
     }
+  };
+
+  const leavePage = () => {
+    void leaseControllerRef.current?.stop();
+    destroyPlayer();
+    navigate(-1);
   };
 
   const exitFullscreen = () => {
@@ -246,15 +347,11 @@ const CoursePalyPage = () => {
     <div className={styles["video-mask"]}>
       <div className={styles["top-cont"]}>
         <div className={styles["box"]}>
-          <div
-            className={styles["close-btn"]}
-            onClick={() => {
-              timer && clearInterval(timer);
-              window.player && window.player.destroy();
-              navigate(-1);
-            }}
-          >
-            <ArrowLeftOutlined />
+          <div className={styles["close-btn"]} onClick={leavePage}>
+            <ArrowLeftOutlined
+              onPointerEnterCapture={undefined}
+              onPointerLeaveCapture={undefined}
+            />
             <span className="ml-14">返回</span>
           </div>
         </div>
@@ -267,19 +364,20 @@ const CoursePalyPage = () => {
             id="meedu-player-container"
             style={{ borderRadius: 8 }}
           ></div>
-          {checkPlayerStatus && (
+          {leaseMessage && (
             <div className={styles["alert-message"]}>
-              <div className={styles["des-video"]}>
-                您已打开新视频，暂停本视频播放
+              <div className={styles["des-video"]}>{leaseMessage}</div>
+              <div className={styles["alert-button"]} onClick={retryPlayback}>
+                点击重试
               </div>
             </div>
           )}
-          {playendedStatus && (
+          {!leaseMessage && playendedStatus && (
             <div className={styles["alert-message"]}>
               {isLastpage && (
                 <div
                   className={styles["alert-button"]}
-                  onClick={() => navigate(`/course/${params.courseId}`)}
+                  onClick={() => navigate(`/course/${courseId}`)}
                 >
                   恭喜你学完最后一节
                 </div>
@@ -288,7 +386,6 @@ const CoursePalyPage = () => {
                 <div
                   className={styles["alert-button"]}
                   onClick={() => {
-                    window.player && window.player.destroy();
                     setLastSeeValue({});
                     setPlayendedStatus(false);
                     goNextVideo();

@@ -50,7 +50,7 @@ export class HttpClient {
 
         if (code === 0) {
           return Promise.resolve(response);
-        } else {
+        } else if (code !== 40901 && code !== 40902) {
           message.error(msg);
         }
         return Promise.reject(response);
@@ -140,6 +140,26 @@ export class HttpClient {
         .catch((err) => {
           reject(err.data);
         });
+    });
+  }
+
+  keepalive(url: string, params: object) {
+    const token = getToken();
+    const baseUrl = new URL(
+      this.axios.defaults.baseURL || window.location.origin,
+      window.location.origin
+    );
+    const requestUrl = new URL(url, baseUrl).toString();
+
+    return fetch(requestUrl, {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: "Bearer " + token } : {}),
+      },
+      body: JSON.stringify(params),
+      keepalive: true,
     });
   }
 }

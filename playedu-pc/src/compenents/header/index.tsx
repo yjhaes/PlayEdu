@@ -70,7 +70,12 @@ export const Header: React.FC = () => {
     if (key === "login_out") {
       confirm({
         title: "操作确认",
-        icon: <ExclamationCircleFilled />,
+        icon: (
+          <ExclamationCircleFilled
+            onPointerEnterCapture={undefined}
+            onPointerLeaveCapture={undefined}
+          />
+        ),
         content: "确认退出登录？",
         centered: true,
         okText: "确认",
@@ -131,7 +136,12 @@ export const Header: React.FC = () => {
     });
     confirm({
       title: "操作确认",
-      icon: <ExclamationCircleFilled />,
+      icon: (
+        <ExclamationCircleFilled
+          onPointerEnterCapture={undefined}
+          onPointerLeaveCapture={undefined}
+        />
+      ),
       content: "确认切换部门？",
       centered: true,
       okText: "确认",
