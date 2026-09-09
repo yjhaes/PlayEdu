@@ -18,7 +18,9 @@ package xyz.playedu.course.event;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -32,8 +34,11 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
 import xyz.playedu.course.service.impl.DailyLearningRankingService;
 
 @SpringJUnitConfig(DailyLearningRankingAsyncEventListenerTest.TestApplication.class)
@@ -43,8 +48,11 @@ class DailyLearningRankingAsyncEventListenerTest {
 
     @Autowired private DailyLearningRankingService rankingService;
 
+    @Autowired private TransactionTemplate transactionTemplate;
+
     @Test
     void publishesOnlyAfterCommitAndInvokesTheListenerAsynchronously() throws Exception {
+        reset(rankingService);
         LocalDate learningDate = LocalDate.of(2026, 9, 9);
         CountDownLatch projectionStarted = new CountDownLatch(1);
         doAnswer(
@@ -55,22 +63,37 @@ class DailyLearningRankingAsyncEventListenerTest {
                 .when(rankingService)
                 .project(7, learningDate, 1_000L);
 
-        TransactionSynchronizationManager.initSynchronization();
-        TransactionSynchronizationManager.setActualTransactionActive(true);
-        try {
-            durationEventPublisher.publishAfterCommit(7, learningDate, 1_000L);
-            assertThat(projectionStarted.await(0, TimeUnit.MILLISECONDS)).isFalse();
-            for (TransactionSynchronization synchronization :
-                    TransactionSynchronizationManager.getSynchronizations()) {
-                synchronization.afterCommit();
-            }
-        } finally {
-            TransactionSynchronizationManager.clearSynchronization();
-            TransactionSynchronizationManager.setActualTransactionActive(false);
-        }
+        transactionTemplate.executeWithoutResult(
+                status -> {
+                    durationEventPublisher.publishAfterCommit(7, learningDate, 1_000L);
+                    assertThat(projectionStarted.getCount()).isEqualTo(1L);
+                });
 
         assertThat(projectionStarted.await(5, TimeUnit.SECONDS)).isTrue();
         verify(rankingService).project(7, learningDate, 1_000L);
+    }
+
+    @Test
+    void doesNotPublishWhenTheTransactionRollsBack() throws Exception {
+        reset(rankingService);
+        LocalDate learningDate = LocalDate.of(2026, 9, 9);
+        CountDownLatch projectionStarted = new CountDownLatch(1);
+        doAnswer(
+                        invocation -> {
+                            projectionStarted.countDown();
+                            return null;
+                        })
+                .when(rankingService)
+                .project(7, learningDate, 1_000L);
+
+        transactionTemplate.executeWithoutResult(
+                status -> {
+                    durationEventPublisher.publishAfterCommit(7, learningDate, 1_000L);
+                    status.setRollbackOnly();
+                });
+
+        assertThat(projectionStarted.await(500, TimeUnit.MILLISECONDS)).isFalse();
+        verifyNoInteractions(rankingService);
     }
 
     @Configuration(proxyBeanMethods = false)
@@ -87,5 +110,32 @@ class DailyLearningRankingAsyncEventListenerTest {
         MeterRegistry meterRegistry() {
             return new SimpleMeterRegistry();
         }
+
+        @Bean
+        PlatformTransactionManager transactionManager() {
+            return new TestTransactionManager();
+        }
+
+        @Bean
+        TransactionTemplate transactionTemplate(PlatformTransactionManager transactionManager) {
+            return new TransactionTemplate(transactionManager);
+        }
+    }
+
+    static class TestTransactionManager extends AbstractPlatformTransactionManager {
+
+        @Override
+        protected Object doGetTransaction() {
+            return new Object();
+        }
+
+        @Override
+        protected void doBegin(Object transaction, TransactionDefinition definition) {}
+
+        @Override
+        protected void doCommit(DefaultTransactionStatus status) {}
+
+        @Override
+        protected void doRollback(DefaultTransactionStatus status) {}
     }
 }

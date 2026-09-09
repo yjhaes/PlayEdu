@@ -34,7 +34,7 @@ import xyz.playedu.common.constant.SystemConstant;
 import xyz.playedu.common.domain.User;
 import xyz.playedu.common.service.*;
 import xyz.playedu.common.types.JsonResponse;
-import xyz.playedu.course.domain.UserLearnDurationStats;
+import xyz.playedu.course.domain.DailyLearningRankingEntry;
 import xyz.playedu.course.service.CourseService;
 import xyz.playedu.course.service.UserLearnDurationStatsService;
 import xyz.playedu.course.service.impl.DailyLearningRankingService;
@@ -99,8 +99,8 @@ public class DashboardController {
         data.put("user_learn_today", userLearnDurationStatsService.todayTotal());
         data.put("user_learn_yesterday", userLearnDurationStatsService.yesterdayTotal());
 
-        List<UserLearnDurationStats> userLearnTop10 = dailyLearningRankingService.todayTop10();
-        List<UserLearnDurationStats> userLearnYesterdayTop10 =
+        List<DailyLearningRankingEntry> userLearnTop10 = dailyLearningRankingService.todayTop10();
+        List<DailyLearningRankingEntry> userLearnYesterdayTop10 =
                 dailyLearningRankingService.yesterdayTop10();
         Map<Integer, User> top10Users = top10Users(userLearnTop10);
         Map<Integer, User> yesterdayTop10Users = top10Users(userLearnYesterdayTop10);
@@ -122,13 +122,13 @@ public class DashboardController {
         return JsonResponse.success();
     }
 
-    private Map<Integer, User> top10Users(List<UserLearnDurationStats> ranking) {
+    private Map<Integer, User> top10Users(List<DailyLearningRankingEntry> ranking) {
         if (ranking.isEmpty()) {
             return Map.of();
         }
         return userService
                 .chunks(
-                        ranking.stream().map(UserLearnDurationStats::getUserId).toList(),
+                        ranking.stream().map(DailyLearningRankingEntry::getUserId).toList(),
                         List.of("id", "name", "avatar", "email"))
                 .stream()
                 .collect(Collectors.toMap(User::getId, e -> e));

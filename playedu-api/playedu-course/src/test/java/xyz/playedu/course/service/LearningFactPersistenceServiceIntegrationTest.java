@@ -17,16 +17,26 @@ package xyz.playedu.course.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.apache.ibatis.annotations.Mapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mybatis.spring.annotation.MapperScan;
@@ -39,6 +49,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -54,6 +65,8 @@ import xyz.playedu.common.redis.RedisLockException;
 import xyz.playedu.common.redis.RedisRuntimeConfiguration;
 import xyz.playedu.course.event.DailyLearningDurationConfirmedEvent;
 import xyz.playedu.course.event.DailyLearningDurationEventPublisher;
+import xyz.playedu.course.event.DailyLearningRankingEventListener;
+import xyz.playedu.course.service.impl.DailyLearningRankingService;
 import xyz.playedu.course.service.impl.UserCourseHourRecordServiceImpl;
 import xyz.playedu.course.service.impl.UserCourseRecordServiceImpl;
 import xyz.playedu.course.service.impl.UserLearnDurationRecordServiceImpl;
@@ -75,6 +88,10 @@ class LearningFactPersistenceServiceIntegrationTest {
     @Autowired private LearningFactPersistenceService learningFactPersistenceService;
 
     @Autowired private LearningDurationEventCollector eventCollector;
+
+    @Autowired private DailyLearningRankingService rankingService;
+
+    @Autowired private MeterRegistry meterRegistry;
 
     @Autowired private RedisDistributedLock distributedLock;
 
@@ -160,6 +177,11 @@ class LearningFactPersistenceServiceIntegrationTest {
                 """);
     }
 
+    @AfterEach
+    void tearDown() {
+        reset(rankingService);
+    }
+
     @Test
     void commitsProgressAndDurationTogetherThenPublishesTheConfirmedIncrement() {
         learningFactPersistenceService.record(7, 8, 9, 10, 100);
@@ -188,6 +210,34 @@ class LearningFactPersistenceServiceIntegrationTest {
                             assertThat(event.getUserId()).isEqualTo(7);
                             assertThat(event.getDuration()).isEqualTo(10_000L);
                         });
+    }
+
+    @Test
+    void keepsCommittedMySqlFactsWhenAsyncRankingProjectionFails() throws Exception {
+        reset(rankingService);
+        CountDownLatch projectionFailed = new CountDownLatch(1);
+        doAnswer(
+                        invocation -> {
+                            projectionFailed.countDown();
+                            throw new IllegalStateException("Redis unavailable");
+                        })
+                .when(rankingService)
+                .project(anyInt(), any(LocalDate.class), anyLong());
+
+        learningFactPersistenceService.record(7, 8, 9, 10, 100);
+
+        assertThat(projectionFailed.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(
+                        jdbcTemplate.queryForObject(
+                                "SELECT duration FROM user_learn_duration_stats WHERE user_id = 7",
+                                Long.class))
+                .isEqualTo(10_000L);
+        assertThat(
+                        meterRegistry
+                                .get("playedu.learning.ranking.projection.failures")
+                                .counter()
+                                .count())
+                .isEqualTo(1.0);
     }
 
     @Test
@@ -291,9 +341,11 @@ class LearningFactPersistenceServiceIntegrationTest {
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @EnableTransactionManagement
+    @EnableAsync
     @MapperScan(basePackages = "xyz.playedu.course.mapper", annotationClass = Mapper.class)
     @Import({
         DailyLearningDurationEventPublisher.class,
+        DailyLearningRankingEventListener.class,
         LearningFactPersistenceService.class,
         RedisDistributedLock.class,
         RedisKeyspace.class,
@@ -318,6 +370,16 @@ class LearningFactPersistenceServiceIntegrationTest {
         @Bean
         LearningDurationEventCollector learningDurationEventCollector() {
             return new LearningDurationEventCollector();
+        }
+
+        @Bean
+        DailyLearningRankingService rankingService() {
+            return mock(DailyLearningRankingService.class);
+        }
+
+        @Bean
+        MeterRegistry meterRegistry() {
+            return new SimpleMeterRegistry();
         }
     }
 

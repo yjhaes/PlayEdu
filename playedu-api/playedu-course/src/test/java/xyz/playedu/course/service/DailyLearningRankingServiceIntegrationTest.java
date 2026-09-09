@@ -43,7 +43,7 @@ import org.testcontainers.utility.DockerImageName;
 import xyz.playedu.common.redis.RedisDistributedLock;
 import xyz.playedu.common.redis.RedisKeyspace;
 import xyz.playedu.common.redis.RedisRuntimeConfiguration;
-import xyz.playedu.course.domain.UserLearnDurationStats;
+import xyz.playedu.course.domain.DailyLearningRankingEntry;
 import xyz.playedu.course.service.impl.DailyLearningRankingService;
 
 @SpringBootTest(classes = DailyLearningRankingServiceIntegrationTest.TestApplication.class)
@@ -109,12 +109,12 @@ class DailyLearningRankingServiceIntegrationTest {
         insertAuthoritativeDuration(14, 99_000L, yesterday);
         rankingService.project(14, yesterday, 99_000L);
 
-        List<UserLearnDurationStats> todayTop = rankingService.todayTop10();
-        List<UserLearnDurationStats> yesterdayTop = rankingService.yesterdayTop10();
+        List<DailyLearningRankingEntry> todayTop = rankingService.todayTop10();
+        List<DailyLearningRankingEntry> yesterdayTop = rankingService.yesterdayTop10();
 
         assertThat(todayTop).hasSize(10);
         assertThat(todayTop.get(0).getDuration()).isEqualTo(13_000L);
-        assertThat(todayTop).extracting(UserLearnDurationStats::getUserId).doesNotContain(1, 2);
+        assertThat(todayTop).extracting(DailyLearningRankingEntry::getUserId).doesNotContain(1, 2);
         assertThat(todayTop)
                 .allSatisfy(
                         record ->
@@ -142,9 +142,9 @@ class DailyLearningRankingServiceIntegrationTest {
         rankingService.project(8, today, 750L);
         rankingService.project(9, today, 750L);
 
-        List<UserLearnDurationStats> top = rankingService.todayTop10();
+        List<DailyLearningRankingEntry> top = rankingService.todayTop10();
 
-        assertThat(top).extracting(UserLearnDurationStats::getUserId).contains(7, 8, 9);
+        assertThat(top).extracting(DailyLearningRankingEntry::getUserId).contains(7, 8, 9);
         assertThat(
                         top.stream()
                                 .filter(record -> record.getUserId().equals(7))
@@ -175,14 +175,14 @@ class DailyLearningRankingServiceIntegrationTest {
 
         assertThat(rankingService.todayTop10())
                 .singleElement()
-                .extracting(UserLearnDurationStats::getDuration)
+                .extracting(DailyLearningRankingEntry::getDuration)
                 .isEqualTo(1_000L);
 
         rankingService.project(7, today, 1_000L);
 
         assertThat(rankingService.todayTop10())
                 .singleElement()
-                .extracting(UserLearnDurationStats::getDuration)
+                .extracting(DailyLearningRankingEntry::getDuration)
                 .isEqualTo(1_000L);
     }
 
@@ -195,10 +195,10 @@ class DailyLearningRankingServiceIntegrationTest {
         rankingService.project(7, today, 1_000L);
 
         assertThat(rankingService.todayTop10())
-                .extracting(UserLearnDurationStats::getUserId)
+                .extracting(DailyLearningRankingEntry::getUserId)
                 .containsExactly(8, 7);
         assertThat(rankingService.todayTop10())
-                .extracting(UserLearnDurationStats::getDuration)
+                .extracting(DailyLearningRankingEntry::getDuration)
                 .containsExactly(2_000L, 1_000L);
     }
 
@@ -212,7 +212,7 @@ class DailyLearningRankingServiceIntegrationTest {
         rankingService.removeUser(8);
 
         assertThat(rankingService.todayTop10())
-                .extracting(UserLearnDurationStats::getUserId)
+                .extracting(DailyLearningRankingEntry::getUserId)
                 .containsExactly(7);
     }
 
@@ -225,8 +225,8 @@ class DailyLearningRankingServiceIntegrationTest {
         insertAuthoritativeDuration(9, 2_000L, yesterday);
 
         rankingService.rebuildTodayAndYesterday();
-        List<UserLearnDurationStats> firstToday = rankingService.todayTop10();
-        List<UserLearnDurationStats> firstYesterday = rankingService.yesterdayTop10();
+        List<DailyLearningRankingEntry> firstToday = rankingService.todayTop10();
+        List<DailyLearningRankingEntry> firstYesterday = rankingService.yesterdayTop10();
 
         redisTemplate.getConnectionFactory().getConnection().serverCommands().flushDb();
         assertThat(rankingService.todayTop10()).usingRecursiveComparison().isEqualTo(firstToday);

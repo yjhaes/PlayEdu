@@ -37,7 +37,6 @@ type BasicDataModel = {
 type Top10Model = {
   created_date: string;
   duration: number;
-  id?: number;
   user_id: number;
 };
 

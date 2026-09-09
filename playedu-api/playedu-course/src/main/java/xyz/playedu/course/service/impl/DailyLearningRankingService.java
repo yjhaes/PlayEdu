@@ -33,6 +33,7 @@ import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 import xyz.playedu.common.redis.RedisDistributedLock;
 import xyz.playedu.common.redis.RedisKeyspace;
+import xyz.playedu.course.domain.DailyLearningRankingEntry;
 import xyz.playedu.course.domain.UserLearnDurationStats;
 import xyz.playedu.course.mapper.UserLearnDurationStatsMapper;
 
@@ -129,11 +130,11 @@ public class DailyLearningRankingService {
         this.clock = clock;
     }
 
-    public List<UserLearnDurationStats> todayTop10() {
+    public List<DailyLearningRankingEntry> todayTop10() {
         return top10For(currentDate());
     }
 
-    public List<UserLearnDurationStats> yesterdayTop10() {
+    public List<DailyLearningRankingEntry> yesterdayTop10() {
         return top10For(currentDate().minusDays(1));
     }
 
@@ -168,7 +169,7 @@ public class DailyLearningRankingService {
         rebuildIfMissing(today.minusDays(1));
     }
 
-    private List<UserLearnDurationStats> top10For(LocalDate learningDate) {
+    private List<DailyLearningRankingEntry> top10For(LocalDate learningDate) {
         String key = key(learningDate);
         if (!projectionReady(learningDate)) {
             rebuildForDate(learningDate);
@@ -180,16 +181,16 @@ public class DailyLearningRankingService {
             return new ArrayList<>();
         }
 
-        List<UserLearnDurationStats> result = new ArrayList<>(entries.size());
+        List<DailyLearningRankingEntry> result = new ArrayList<>(entries.size());
         for (ZSetOperations.TypedTuple<String> entry : entries) {
             if (entry.getValue() == null || entry.getScore() == null) {
                 continue;
             }
-            UserLearnDurationStats stats = new UserLearnDurationStats();
-            stats.setUserId(Integer.valueOf(entry.getValue()));
-            stats.setDuration(Math.round(entry.getScore()));
-            stats.setCreatedDate(Date.valueOf(learningDate));
-            result.add(stats);
+            DailyLearningRankingEntry rankingEntry = new DailyLearningRankingEntry();
+            rankingEntry.setUserId(Integer.valueOf(entry.getValue()));
+            rankingEntry.setDuration(Math.round(entry.getScore()));
+            rankingEntry.setCreatedDate(Date.valueOf(learningDate));
+            result.add(rankingEntry);
         }
         return result;
     }
