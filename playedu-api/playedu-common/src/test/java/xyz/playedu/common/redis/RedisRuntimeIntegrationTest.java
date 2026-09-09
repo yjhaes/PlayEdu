@@ -16,9 +16,11 @@
 package xyz.playedu.common.redis;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -68,6 +70,8 @@ class RedisRuntimeIntegrationTest {
     @Autowired private ApiRequestRateLimiter apiRequestRateLimiter;
 
     @Autowired private RedisDistributedLock distributedLock;
+
+    @Autowired private LoginFailureTracker loginFailureTracker;
 
     @DynamicPropertySource
     static void redisProperties(DynamicPropertyRegistry registry) {
@@ -152,6 +156,100 @@ class RedisRuntimeIntegrationTest {
         } finally {
             secondRedisson.shutdown();
         }
+    }
+
+    @Test
+    void atomicallySharesLearnerFailuresAndTheOriginalLockWindowAcrossInstances() throws Exception {
+        LoginFailureTracker secondInstance = new LoginFailureTracker(redisTemplate, keyspace);
+        String learner = "learner-" + UUID.randomUUID();
+
+        LoginFailureTracker.LoginFailureStatus firstFailure =
+                loginFailureTracker.recordFailure(LoginFailureTracker.LoginType.LEARNER, learner);
+        Thread.sleep(1_100);
+        LoginFailureTracker.LoginFailureStatus secondFailure =
+                secondInstance.recordFailure(LoginFailureTracker.LoginType.LEARNER, learner);
+
+        assertThat(secondFailure.failureCount()).isEqualTo(2);
+        assertThat(secondFailure.remainingSeconds()).isLessThan(firstFailure.remainingSeconds());
+
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        try {
+            List<Future<LoginFailureTracker.LoginFailureStatus>> failures =
+                    java.util.stream.IntStream.range(0, 20)
+                            .mapToObj(
+                                    attempt ->
+                                            executor.submit(
+                                                    () ->
+                                                            (attempt % 2 == 0
+                                                                            ? loginFailureTracker
+                                                                            : secondInstance)
+                                                                    .recordFailure(
+                                                                            LoginFailureTracker
+                                                                                    .LoginType
+                                                                                    .LEARNER,
+                                                                            learner)))
+                            .toList();
+            for (Future<LoginFailureTracker.LoginFailureStatus> failure : failures) {
+                failure.get();
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+
+        LoginFailureTracker.LoginFailureStatus sharedStatus =
+                secondInstance.status(LoginFailureTracker.LoginType.LEARNER, learner);
+        assertThat(sharedStatus.failureCount()).isEqualTo(LoginFailureTracker.MAX_FAILURES);
+        assertThat(sharedStatus.remainingSeconds()).isPositive();
+        assertThatThrownBy(
+                        () ->
+                                secondInstance.assertNotLocked(
+                                        LoginFailureTracker.LoginType.LEARNER, learner))
+                .isInstanceOf(LoginFailureLimitException.class)
+                .hasMessageContaining("请");
+        assertThatThrownBy(
+                        () ->
+                                loginFailureTracker.reset(
+                                        LoginFailureTracker.LoginType.LEARNER, learner))
+                .isInstanceOf(LoginFailureLimitException.class);
+
+        String successfulLearner = "successful-learner-" + UUID.randomUUID();
+        loginFailureTracker.recordFailure(LoginFailureTracker.LoginType.LEARNER, successfulLearner);
+        secondInstance.reset(LoginFailureTracker.LoginType.LEARNER, successfulLearner);
+        assertThat(
+                        loginFailureTracker.status(
+                                LoginFailureTracker.LoginType.LEARNER, successfulLearner))
+                .isEqualTo(new LoginFailureTracker.LoginFailureStatus(0, 0));
+    }
+
+    @Test
+    void locksAdministratorsForOneHourAndClearsUnlockedFailuresAfterSuccess() {
+        String administrator = "administrator-" + UUID.randomUUID();
+        String successfulAdministrator = "successful-administrator-" + UUID.randomUUID();
+
+        LoginFailureTracker.LoginFailureStatus firstFailure =
+                loginFailureTracker.recordFailure(
+                        LoginFailureTracker.LoginType.ADMINISTRATOR, administrator);
+        assertThat(firstFailure.remainingSeconds()).isBetween(3_590L, 3_600L);
+        for (int attempt = 1; attempt < LoginFailureTracker.MAX_FAILURES; attempt++) {
+            loginFailureTracker.recordFailure(
+                    LoginFailureTracker.LoginType.ADMINISTRATOR, administrator);
+        }
+
+        assertThatThrownBy(
+                        () ->
+                                loginFailureTracker.assertNotLocked(
+                                        LoginFailureTracker.LoginType.ADMINISTRATOR, administrator))
+                .isInstanceOf(LoginFailureLimitException.class);
+
+        loginFailureTracker.recordFailure(
+                LoginFailureTracker.LoginType.ADMINISTRATOR, successfulAdministrator);
+        loginFailureTracker.reset(
+                LoginFailureTracker.LoginType.ADMINISTRATOR, successfulAdministrator);
+        assertThat(
+                        loginFailureTracker.status(
+                                LoginFailureTracker.LoginType.ADMINISTRATOR,
+                                successfulAdministrator))
+                .isEqualTo(new LoginFailureTracker.LoginFailureStatus(0, 0));
     }
 
     @Test
@@ -264,6 +362,7 @@ class RedisRuntimeIntegrationTest {
         RedisRuntimeConfiguration.class,
         ApiRequestRateLimiter.class,
         RedisDistributedLock.class,
+        LoginFailureTracker.class,
         RedisKeyspace.class
     })
     static class TestApplication {}

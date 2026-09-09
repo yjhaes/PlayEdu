@@ -16,7 +16,6 @@
 package xyz.playedu.api.controller.frontend;
 
 import java.util.HashMap;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
@@ -26,14 +25,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.playedu.api.bus.LoginBus;
-import xyz.playedu.api.cache.LoginLimitCache;
 import xyz.playedu.api.event.UserLogoutEvent;
 import xyz.playedu.api.request.frontend.LoginLdapRequest;
 import xyz.playedu.api.request.frontend.LoginPasswordRequest;
 import xyz.playedu.common.context.FCtx;
 import xyz.playedu.common.domain.User;
-import xyz.playedu.common.exception.LimitException;
 import xyz.playedu.common.exception.ServiceException;
+import xyz.playedu.common.redis.LoginFailureLimitException;
+import xyz.playedu.common.redis.LoginFailureTracker;
+import xyz.playedu.common.redis.LoginFailureTrackingUnavailableException;
 import xyz.playedu.common.redis.RedisDistributedLock;
 import xyz.playedu.common.redis.RedisLockException;
 import xyz.playedu.common.service.*;
@@ -58,28 +58,23 @@ public class LoginController {
 
     @Autowired private LoginBus loginBus;
 
-    @Autowired private LoginLimitCache loginLimitCache;
+    @Autowired private LoginFailureTracker loginFailureTracker;
 
     @Autowired private RedisDistributedLock distributedLock;
 
     @PostMapping("/password")
-    @SneakyThrows
-    public JsonResponse password(@RequestBody @Validated LoginPasswordRequest req)
-            throws LimitException {
+    public JsonResponse password(@RequestBody @Validated LoginPasswordRequest req) {
         if (appConfigService.enabledLdapLogin()) {
             return JsonResponse.error("请使用LDAP登录");
         }
 
         String email = req.getEmail();
 
+        loginFailureTracker.assertNotLocked(LoginFailureTracker.LoginType.LEARNER, email);
         User user = userService.find(email);
-        if (user == null) {
-            return JsonResponse.error("邮箱或密码错误");
-        }
-
-        loginLimitCache.check(email);
-
-        if (!HelperUtil.MD5(req.getPassword() + user.getSalt()).equals(user.getPassword())) {
+        if (user == null
+                || !HelperUtil.MD5(req.getPassword() + user.getSalt()).equals(user.getPassword())) {
+            loginFailureTracker.recordFailure(LoginFailureTracker.LoginType.LEARNER, email);
             return JsonResponse.error("邮箱或密码错误");
         }
 
@@ -87,13 +82,12 @@ public class LoginController {
             return JsonResponse.error("当前学员已锁定无法登录");
         }
 
-        loginLimitCache.destroy(email);
+        loginFailureTracker.reset(LoginFailureTracker.LoginType.LEARNER, email);
 
         return JsonResponse.data(loginBus.tokenByUser(user));
     }
 
     @PostMapping("/ldap")
-    @SneakyThrows
     public JsonResponse ldap(@RequestBody @Validated LoginLdapRequest req) {
         String username = req.getUsername();
 
@@ -102,27 +96,32 @@ public class LoginController {
         String mail = StringUtil.contains(username, "@") ? username : null;
         String uid = StringUtil.contains(username, "@") ? null : username;
 
-        // 限流控制
-        loginLimitCache.check(username);
-
         try {
             return distributedLock.execute(
                     "login",
                     username,
                     () -> {
+                        loginFailureTracker.assertNotLocked(
+                                LoginFailureTracker.LoginType.LEARNER, username);
                         LdapTransformUser ldapTransformUser =
                                 ldapLogin(ldapConfig, mail, uid, req.getPassword());
                         if (ldapTransformUser == null) {
+                            loginFailureTracker.recordFailure(
+                                    LoginFailureTracker.LoginType.LEARNER, username);
                             return JsonResponse.error("登录失败.请检查账号和密码");
                         }
 
+                        loginFailureTracker.reset(LoginFailureTracker.LoginType.LEARNER, username);
                         HashMap<String, Object> data =
                                 loginBus.tokenByLdapTransformUser(ldapTransformUser);
-                        loginLimitCache.destroy(username);
                         return JsonResponse.data(data);
                     });
         } catch (RedisLockException e) {
             return JsonResponse.error("请稍候再试");
+        } catch (LoginFailureTrackingUnavailableException e) {
+            throw e;
+        } catch (LoginFailureLimitException e) {
+            throw e;
         } catch (ServiceException e) {
             return JsonResponse.error(e.getMessage());
         } catch (Exception e) {

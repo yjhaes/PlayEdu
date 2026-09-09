@@ -13,9 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.playedu.common.service;
+package xyz.playedu.common.redis;
 
-public interface RateLimiterService {
+import xyz.playedu.common.exception.ServiceException;
 
-    Long current(String key, Long seconds);
+/** Indicates that Redis cannot enforce login failure protection. */
+public class LoginFailureTrackingUnavailableException extends ServiceException {
+
+    public LoginFailureTrackingUnavailableException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

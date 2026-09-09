@@ -26,18 +26,16 @@ import xyz.playedu.api.request.backend.PasswordChangeRequest;
 import xyz.playedu.common.annotation.BackendPermission;
 import xyz.playedu.common.annotation.Log;
 import xyz.playedu.common.bus.BackendBus;
-import xyz.playedu.common.config.PlayEduConfig;
 import xyz.playedu.common.constant.BPermissionConstant;
 import xyz.playedu.common.constant.BusinessTypeConstant;
 import xyz.playedu.common.context.BCtx;
 import xyz.playedu.common.domain.AdminUser;
+import xyz.playedu.common.redis.LoginFailureTracker;
 import xyz.playedu.common.service.AdminUserService;
 import xyz.playedu.common.service.BackendAuthService;
-import xyz.playedu.common.service.RateLimiterService;
 import xyz.playedu.common.types.JsonResponse;
 import xyz.playedu.common.util.HelperUtil;
 import xyz.playedu.common.util.IpUtil;
-import xyz.playedu.common.util.MemoryCacheUtil;
 import xyz.playedu.common.util.RequestUtil;
 
 @RestController
@@ -52,37 +50,31 @@ public class LoginController {
 
     @Autowired private ApplicationContext ctx;
 
-    @Autowired private RateLimiterService rateLimiterService;
-
-    @Autowired private PlayEduConfig playEduConfig;
+    @Autowired private LoginFailureTracker loginFailureTracker;
 
     @PostMapping("/login")
     @Log(title = "管理员-登录", businessType = BusinessTypeConstant.LOGIN)
     public JsonResponse login(@RequestBody @Validated LoginRequest loginRequest) {
+        loginFailureTracker.assertNotLocked(
+                LoginFailureTracker.LoginType.ADMINISTRATOR, loginRequest.getEmail());
         AdminUser adminUser = adminUserService.findByEmail(loginRequest.email);
-        if (adminUser == null) {
+        if (adminUser == null
+                || !adminUser
+                        .getPassword()
+                        .equals(
+                                HelperUtil.MD5(loginRequest.getPassword() + adminUser.getSalt())
+                                        .toLowerCase())) {
+            loginFailureTracker.recordFailure(
+                    LoginFailureTracker.LoginType.ADMINISTRATOR, loginRequest.getEmail());
             return JsonResponse.error("邮箱或密码错误");
         }
-
-        String limitKey = "admin-login-limit:" + loginRequest.getEmail();
-        Long reqCount = rateLimiterService.current(limitKey, 3600L);
-        if (reqCount > 10 && !playEduConfig.getTesting()) {
-            Long exp = MemoryCacheUtil.ttlWithoutPrefix(limitKey);
-            return JsonResponse.error(
-                    String.format("您的账号已被锁定，请%s后重试", exp > 60 ? exp / 60 + "分钟" : exp + "秒"));
-        }
-
-        String password =
-                HelperUtil.MD5(loginRequest.getPassword() + adminUser.getSalt()).toLowerCase();
-        if (!adminUser.getPassword().equals(password)) {
-            return JsonResponse.error("邮箱或密码错误");
-        }
-
-        MemoryCacheUtil.del(limitKey);
 
         if (adminUser.getIsBanLogin().equals(1)) {
             return JsonResponse.error("当前管理员已禁止登录");
         }
+
+        loginFailureTracker.reset(
+                LoginFailureTracker.LoginType.ADMINISTRATOR, loginRequest.getEmail());
 
         String token = authService.loginUsingId(adminUser.getId(), RequestUtil.url());
 

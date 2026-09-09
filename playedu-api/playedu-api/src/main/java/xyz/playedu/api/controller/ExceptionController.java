@@ -33,6 +33,7 @@ import xyz.playedu.common.exception.LimitException;
 import xyz.playedu.common.exception.NotFoundException;
 import xyz.playedu.common.exception.ServiceException;
 import xyz.playedu.common.redis.ApiRateLimitUnavailableException;
+import xyz.playedu.common.redis.LoginFailureTrackingUnavailableException;
 import xyz.playedu.common.types.JsonResponse;
 
 @RestControllerAdvice
@@ -98,6 +99,14 @@ public class ExceptionController {
         log.error("API 请求限流服务不可用", exception);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(JsonResponse.error("请求限流服务暂不可用", 503));
+    }
+
+    @ExceptionHandler(LoginFailureTrackingUnavailableException.class)
+    public ResponseEntity<JsonResponse> loginFailureTrackingUnavailableHandler(
+            LoginFailureTrackingUnavailableException exception) {
+        log.error("登录保护服务不可用", exception);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(JsonResponse.error("登录保护服务暂不可用，请稍后重试", 503));
     }
 
     @ExceptionHandler(AmazonS3Exception.class)
