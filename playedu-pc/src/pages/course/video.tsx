@@ -5,9 +5,29 @@ import { useSelector } from "react-redux";
 import { course as Course } from "../../api/index";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { message } from "antd";
-import { LearningLeaseController } from "../../utils/learningLease";
+import {
+  LearningLeaseController,
+  type LearningHeartbeatData,
+} from "../../utils/learningLease";
 
-declare const window: any;
+interface DPlayerInstance {
+  video: HTMLVideoElement;
+  on: (event: string, handler: () => void) => void;
+  seek: (seconds: number) => void;
+  destroy: () => void;
+}
+
+interface DPlayerWindow extends Window {
+  DPlayer: new (options: Record<string, unknown>) => DPlayerInstance;
+  player?: DPlayerInstance | null;
+}
+
+declare const window: DPlayerWindow;
+
+type LastSeePosition = {
+  time: number;
+  pos: number;
+};
 
 const LEARNING_CONFLICT_MESSAGE =
   "当前已有其他课时正在学习，请先暂停或结束其他视频";
@@ -25,10 +45,8 @@ const CoursePalyPage = () => {
   const routeKey = `${courseId}-${hourId}`;
   const [playUrl, setPlayUrl] = useState("");
   const [playendedStatus, setPlayendedStatus] = useState(false);
-  const [lastSeeValue, setLastSeeValue] = useState<any>({});
   const [course, setCourse] = useState<CourseModel | null>(null);
   const [hour, setHour] = useState<HourModel | null>(null);
-  const [loading, setLoading] = useState(false);
   const [isLastpage, setIsLastpage] = useState(false);
   const [totalHours, setTotalHours] = useState<HourModel[]>([]);
   const [playingTime, setPlayingTime] = useState(0);
@@ -38,7 +56,7 @@ const CoursePalyPage = () => {
   const playRef = useRef(0);
   const watchRef = useRef(0);
   const totalRef = useRef(0);
-  const playerRef = useRef<any>(null);
+  const playerRef = useRef<DPlayerInstance | null>(null);
   const routeKeyRef = useRef(routeKey);
   const leaseControllerRef = useRef<LearningLeaseController | null>(null);
   const suppressPauseStopRef = useRef(false);
@@ -84,11 +102,11 @@ const CoursePalyPage = () => {
     const controller = new LearningLeaseController(
       {
         heartbeat: async (sessionId?: string) => {
-          const response: any = await Course.playPing(
+          const response = (await Course.playPing(
             courseId,
             hourId,
             sessionId
-          );
+          )) as { data: LearningHeartbeatData };
           return response.data;
         },
         stop: (sessionId: string) =>
@@ -133,7 +151,6 @@ const CoursePalyPage = () => {
   useEffect(() => {
     setPlayendedStatus(false);
     setLeaseMessage("");
-    setLastSeeValue({});
     setPlayingTime(0);
     setWatchedSeconds(0);
     getCourse();
@@ -158,6 +175,9 @@ const CoursePalyPage = () => {
 
   const getCourse = () => {
     Course.detail(courseId).then((res: any) => {
+      if (routeKeyRef.current !== routeKey) {
+        return;
+      }
       let totalHours: HourModel[] = [];
       if (res.data.chapters.length === 0) {
         setTotalHours(res.data.hours[0]);
@@ -178,10 +198,6 @@ const CoursePalyPage = () => {
   };
 
   const getDetail = () => {
-    if (loading) {
-      return true;
-    }
-    setLoading(true);
     Course.play(courseId, hourId)
       .then((res: any) => {
         if (routeKeyRef.current !== routeKey) {
@@ -191,28 +207,22 @@ const CoursePalyPage = () => {
         setHour(res.data.hour);
         document.title = res.data.hour.title;
         const record: HourRecordModel = res.data.user_hour_record;
-        let params = null;
+        let params: LastSeePosition | null = null;
         if (record && record.finished_duration && record.is_finished === 0) {
           params = {
             time: 5,
             pos: record.finished_duration,
           };
-          setLastSeeValue(params);
           setWatchedSeconds(record.finished_duration);
         } else if (record && record.is_finished === 1) {
           setWatchedSeconds(res.data.hour.duration);
         }
         getVideoUrl(res.data.hour.rid, params);
       })
-      .catch(() => undefined)
-      .finally(() => {
-        if (routeKeyRef.current === routeKey) {
-          setLoading(false);
-        }
-      });
+      .catch(() => undefined);
   };
 
-  const getVideoUrl = (rid: number, data: any) => {
+  const getVideoUrl = (rid: number, data: LastSeePosition | null) => {
     Course.playUrl(courseId, hourId).then((res: any) => {
       if (routeKeyRef.current !== routeKey) {
         return;
@@ -224,7 +234,11 @@ const CoursePalyPage = () => {
     });
   };
 
-  const initDPlayer = (url: string, isTrySee: number, params: any) => {
+  const initDPlayer = (
+    url: string,
+    isTrySee: number,
+    params: LastSeePosition | null
+  ) => {
     const player = new window.DPlayer({
       container: document.getElementById("meedu-player-container"),
       autoplay: false,
@@ -277,7 +291,7 @@ const CoursePalyPage = () => {
       if (!isCurrentPlayer()) {
         return;
       }
-      const currentTime = parseInt(player.video.currentTime);
+      const currentTime = Math.trunc(player.video.currentTime);
       if (
         systemConfig.playerIsDisabledDrag &&
         watchRef.current < totalRef.current &&
@@ -309,7 +323,6 @@ const CoursePalyPage = () => {
       exitFullscreen();
       destroyPlayer();
     });
-    setLoading(false);
   };
 
   const goNextVideo = () => {
@@ -318,17 +331,37 @@ const CoursePalyPage = () => {
       setIsLastpage(true);
       message.error("已经是最后一节了！");
     } else if (index < totalHours.length - 1) {
-      void leaseControllerRef.current?.stop();
-      navigate(`/course/${courseId}/hour/${totalHours[index + 1].id}`, {
-        replace: true,
+      const release = leaseControllerRef.current?.stop() ?? Promise.resolve();
+      destroyPlayer();
+      void release.then(() => {
+        if (routeKeyRef.current !== routeKey) {
+          return;
+        }
+        navigate(`/course/${courseId}/hour/${totalHours[index + 1].id}`, {
+          replace: true,
+        });
       });
     }
   };
 
   const leavePage = () => {
-    void leaseControllerRef.current?.stop();
+    const release = leaseControllerRef.current?.stop() ?? Promise.resolve();
     destroyPlayer();
-    navigate(-1);
+    void release.then(() => {
+      if (routeKeyRef.current === routeKey) {
+        navigate(-1);
+      }
+    });
+  };
+
+  const leaveCourse = () => {
+    const release = leaseControllerRef.current?.stop() ?? Promise.resolve();
+    destroyPlayer();
+    void release.then(() => {
+      if (routeKeyRef.current === routeKey) {
+        navigate(`/course/${courseId}`);
+      }
+    });
   };
 
   const exitFullscreen = () => {
@@ -377,7 +410,7 @@ const CoursePalyPage = () => {
               {isLastpage && (
                 <div
                   className={styles["alert-button"]}
-                  onClick={() => navigate(`/course/${courseId}`)}
+                  onClick={leaveCourse}
                 >
                   恭喜你学完最后一节
                 </div>
@@ -386,9 +419,8 @@ const CoursePalyPage = () => {
                 <div
                   className={styles["alert-button"]}
                   onClick={() => {
-                    setLastSeeValue({});
                     setPlayendedStatus(false);
-                    goNextVideo();
+                    void goNextVideo();
                   }}
                 >
                   播放下一节

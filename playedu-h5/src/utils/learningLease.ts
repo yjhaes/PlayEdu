@@ -48,6 +48,8 @@ export class LearningLeaseController {
 
   private release: Promise<boolean> | null = null;
 
+  private stopping: Promise<void> | null = null;
+
   private renewing = false;
 
   private playing = false;
@@ -94,6 +96,12 @@ export class LearningLeaseController {
     this.playing = false;
     ++this.version;
     this.clearHeartbeatTimer();
+
+    if (this.stopping) {
+      return this.stopping;
+    }
+
+    const acquisition = this.acquisition;
     this.acquisition = null;
 
     if (this.sessionId) {
@@ -101,7 +109,7 @@ export class LearningLeaseController {
       this.sessionId = null;
     }
 
-    if (!this.pendingStopSessionId) {
+    if (!this.pendingStopSessionId && !acquisition) {
       if (!this.disposed) {
         this.setStatus("idle");
       }
@@ -112,7 +120,19 @@ export class LearningLeaseController {
       this.setStatus("idle");
     }
 
-    return this.releasePendingStop().then(() => undefined);
+    const waitForAcquisition = acquisition
+      ? acquisition.catch(() => false)
+      : Promise.resolve(false);
+    const stopping = waitForAcquisition
+      .then(() => this.releasePendingStop())
+      .then(() => undefined);
+    const trackedStopping = stopping.finally(() => {
+      if (this.stopping === trackedStopping) {
+        this.stopping = null;
+      }
+    });
+    this.stopping = trackedStopping;
+    return trackedStopping;
   }
 
   dispose(): void {
@@ -140,6 +160,13 @@ export class LearningLeaseController {
   }
 
   private async acquire(version: number): Promise<boolean> {
+    if (this.stopping) {
+      await this.stopping;
+    }
+    if (!this.isCurrent(version)) {
+      return false;
+    }
+
     const released = await this.releasePendingStop();
     if (!released) {
       if (this.isCurrent(version)) {
