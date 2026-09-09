@@ -40,6 +40,40 @@ Redis 是应用的强制依赖。`docker compose up -d --build` 会同时启动�
 
 通过未提交的 `.env` 覆盖 `PLAYEDU_REDIS_HOST`、`PLAYEDU_REDIS_PORT`、`PLAYEDU_REDIS_PASSWORD` 和 `PLAYEDU_REDIS_DATABASE`，即可让应用改连外部 Redis。启动时 Redis 不可用会使应用启动失败；连接状态和失败原因可从 `/actuator/health` 查看。
 
+## 分布式运行边界
+
+```mermaid
+flowchart LR
+    C[PC / H5 / 管理端] --> LB[负载均衡入口]
+    LB --> A1[API 实例 1]
+    LB --> A2[API 实例 2]
+    A1 --> R[(Redis\n锁 / 限流 / 租约 / 实时榜)]
+    A2 --> R
+    A1 --> M[(MySQL\n权威学习事实)]
+    A2 --> M
+```
+
+Redis 只负责跨实例协调和实时学习榜查询投影：锁、请求配额、登录失败计数和活跃学习租约在 Redis 故障时明确失败，不回退到进程内状态；学习课时进度、课程进度和每日学习时长始终由 MySQL 在事务中保存。排行榜更新发生在 MySQL 提交之后，Redis 清空或重启不会损坏学习事实，可从 MySQL 重建今天和昨天的榜单。排行榜重建入口是受权限保护的 `POST /backend/v1/dashboard/learning-ranking/rebuild`。
+
+## 双实例验收
+
+仓库提供包含两个 API 实例、Redis、MySQL 和 Nginx 负载均衡入口的可复现验收拓扑。需要 Docker、PowerShell 7；本机没有 JMeter 时会自动使用固定的 JMeter 5.5 容器：
+
+```powershell
+pwsh -NoProfile -File scripts/acceptance/run.ps1 -Action start
+pwsh -NoProfile -File scripts/acceptance/run.ps1 -Action status
+pwsh -NoProfile -File scripts/acceptance/run.ps1 -Action probe
+pwsh -NoProfile -File scripts/acceptance/run.ps1 -Action load
+pwsh -NoProfile -File scripts/acceptance/run.ps1 -Action report
+pwsh -NoProfile -File scripts/acceptance/run.ps1 -Action stop
+
+# 一键执行完整验收
+pwsh -NoProfile -File scripts/acceptance/run.ps1 -Action full
+pwsh -NoProfile -File scripts/acceptance/run.ps1 -Action stop
+```
+
+启动、健康检查、双实例路由证据、锁竞争、共享限流、学习租约、Redis 丢失后的榜单重建，以及吞吐量/P95/P99 报告的完整说明见 [`docs/acceptance/multi-instance-learning.md`](docs/acceptance/multi-instance-learning.md)。
+
 ## 🔰️ 软件安全
 
 安全问题应该通过邮件私下报告给 tengyongzhi@playeduos.com。 您将在 24 小时内收到回复，如果因为某些原因您没有收到回复，请通过回复原始邮件的方式跟进，以确保我们收到了您的原始邮件。

@@ -42,6 +42,8 @@ public class ApiInterceptor implements HandlerInterceptor {
     public boolean preHandle(
             HttpServletRequest request, HttpServletResponse response, Object handler)
             throws Exception {
+        response.setHeader("X-PlayEdu-Instance", playEduConfig.getInstanceId());
+
         if ("OPTIONS".equals(request.getMethod())) {
             return false;
         }

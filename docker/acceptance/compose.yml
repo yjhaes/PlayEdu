@@ -1,0 +1,173 @@
+name: playedu-redis-acceptance
+
+networks:
+  acceptance:
+    driver: bridge
+
+volumes:
+  acceptance-mysql-data:
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${PLAYEDU_ACCEPTANCE_DB_NAME:-playedu_acceptance}
+      MYSQL_ROOT_PASSWORD: ${PLAYEDU_ACCEPTANCE_DB_PASS:-playeduxyz}
+      TZ: ${PLAYEDU_TZ:-Asia/Shanghai}
+    volumes:
+      - acceptance-mysql-data:/var/lib/mysql
+    networks:
+      - acceptance
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h 127.0.0.1 -uroot -p"$${MYSQL_ROOT_PASSWORD}"
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command:
+      - sh
+      - -c
+      - |
+        if [ -n "$$REDIS_PASSWORD" ]; then
+          exec redis-server --save "" --appendonly no --requirepass "$$REDIS_PASSWORD"
+        fi
+        exec redis-server --save "" --appendonly no
+    environment:
+      REDIS_PASSWORD: ${PLAYEDU_ACCEPTANCE_REDIS_PASSWORD:-}
+    networks:
+      - acceptance
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          if [ -n "$$REDIS_PASSWORD" ]; then redis-cli -a "$$REDIS_PASSWORD" ping;
+          else redis-cli ping; fi
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  api-1:
+    build:
+      context: ../../playedu-api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment: &api-environment
+      SERVER_PORT: 9898
+      SPRING_PROFILES_ACTIVE: dev
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${PLAYEDU_ACCEPTANCE_DB_NAME:-playedu_acceptance}
+      DB_USER: root
+      DB_PASS: ${PLAYEDU_ACCEPTANCE_DB_PASS:-playeduxyz}
+      DB_POOL_MIN_IDLE: 1
+      DB_POOL_MAX_SIZE: 10
+      DB_POOL_CONN_TIMEOUT: 30000
+      DB_POOL_IDLE_TIMEOUT: 600000
+      DB_POOL_MAX_LIFETIME: 1800000
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${PLAYEDU_ACCEPTANCE_REDIS_PASSWORD:-}
+      REDIS_DATABASE: 0
+      REDIS_TIMEOUT: 2s
+      REDIS_CONNECT_TIMEOUT: 2s
+      PLAYEDU_REDIS_KEY_PREFIX: playedu:acceptance
+      PLAYEDU_INSTANCE_ID: api-1
+      PLAYEDU_ACCEPTANCE_ENABLED: "true"
+      PLAYEDU_LIMITER_DURATION: ${PLAYEDU_ACCEPTANCE_LIMITER_DURATION:-60}
+      PLAYEDU_LIMITER_LIMIT: ${PLAYEDU_ACCEPTANCE_LIMITER_LIMIT:-12}
+      SA_TOKEN_JWT_SECRET_KEY: ${PLAYEDU_ACCEPTANCE_JWT_KEY:-playedu-acceptance-only}
+      SA_TOKEN_IS_CONCURRENT: "false"
+      TZ: ${PLAYEDU_TZ:-Asia/Shanghai}
+      DEMO_MODE: "false"
+    ports:
+      - "${PLAYEDU_ACCEPTANCE_API1_PORT:-9702}:9898"
+    expose:
+      - "9898"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - acceptance
+
+  api-2:
+    build:
+      context: ../../playedu-api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      <<: *api-environment
+      PLAYEDU_INSTANCE_ID: api-2
+    ports:
+      - "${PLAYEDU_ACCEPTANCE_API2_PORT:-9703}:9898"
+    expose:
+      - "9898"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api-1:
+        condition: service_started
+    networks:
+      - acceptance
+
+  gateway:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${PLAYEDU_ACCEPTANCE_PORT:-9701}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api-1
+      - api-2
+    networks:
+      - acceptance
+
+  seed:
+    image: mysql:8.4
+    profiles:
+      - seed
+    environment:
+      MYSQL_DATABASE: ${PLAYEDU_ACCEPTANCE_DB_NAME:-playedu_acceptance}
+      MYSQL_ROOT_PASSWORD: ${PLAYEDU_ACCEPTANCE_DB_PASS:-playeduxyz}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      api-1:
+        condition: service_started
+    volumes:
+      - ./seed.sql:/seed/acceptance.sql:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        until test "$$(mysql -h mysql -uroot -p"$${MYSQL_ROOT_PASSWORD}" -Nse
+        "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema='$${MYSQL_DATABASE}'
+        AND table_name='user_learn_duration_stats'
+        AND index_name='uk_user_learn_duration_stats_user_date'")" -gt 0; do sleep 2; done;
+        mysql -h mysql -uroot -p"$${MYSQL_ROOT_PASSWORD}" "$${MYSQL_DATABASE}"
+        < /seed/acceptance.sql
+    networks:
+      - acceptance
+
+  jmeter:
+    image: justb4/jmeter:5.5
+    profiles:
+      - load
+    working_dir: /tests
+    volumes:
+      - ./jmeter:/tests:ro
+      - ../../.scratch/redis-distributed-learning/evidence:/results
+    depends_on:
+      - gateway
+    command: ["-n", "-t", "/tests/multi-instance.jmx", "-l", "/results/multi-instance.jtl"]
+    networks:
+      - acceptance

@@ -29,6 +29,9 @@ public class PlayEduConfig {
     @Value("${playedu.core.testing}")
     private Boolean testing;
 
+    @Value("${playedu.instance-id:local}")
+    private String instanceId;
+
     @Value("${playedu.limiter.duration}")
     private Long limiterDuration;
 

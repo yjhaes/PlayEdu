@@ -34,7 +34,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(apiInterceptor).addPathPatterns("/**");
+        registry.addInterceptor(apiInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns("/actuator/health/**", "/actuator/info");
         registry.addInterceptor(adminInterceptor)
                 .addPathPatterns("/backend/**", "/actuator/metrics/**");
         registry.addInterceptor(frontInterceptor).addPathPatterns("/api/v1/**");

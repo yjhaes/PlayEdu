@@ -11,11 +11,15 @@ COPY playedu-course/pom.xml     /app/playedu-course/pom.xml
 COPY playedu-resource/pom.xml   /app/playedu-resource/pom.xml
 COPY playedu-system/pom.xml     /app/playedu-system/pom.xml
 
-RUN /app/mvnw -B -DskipTests dependency:go-offline
+RUN sed -i 's/\r$//' /app/mvnw \
+    && chmod +x /app/mvnw \
+    && /app/mvnw -B -DskipTests dependency:go-offline
 
 COPY . /app
 
-RUN /app/mvnw -B -Dmaven.test.skip=true package
+RUN sed -i 's/\r$//' /app/mvnw \
+    && chmod +x /app/mvnw \
+    && /app/mvnw -B -Dmaven.test.skip=true package
 
 FROM registry.cn-hangzhou.aliyuncs.com/hzbs/eclipse-temurin:17 AS base
 

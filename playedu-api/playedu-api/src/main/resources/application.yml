@@ -63,13 +63,16 @@ sa-token:
   log-level: "warn"
 
 playedu:
+  instance-id: ${PLAYEDU_INSTANCE_ID:local}
+  acceptance:
+    enabled: ${PLAYEDU_ACCEPTANCE_ENABLED:false}
   redis:
     key-prefix: ${PLAYEDU_REDIS_KEY_PREFIX:playedu}
   core:
     testing: false
   limiter:
-    duration: 60
-    limit: 360
+    duration: ${PLAYEDU_LIMITER_DURATION:60}
+    limit: ${PLAYEDU_LIMITER_LIMIT:360}
   demo:
     # 演示模式开关。开启后，资源删除接口将仅删除 DB 记录，
     # 跳过 S3 文件删除，用于配合 DB 定时恢复搭建演示站。
