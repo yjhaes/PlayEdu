@@ -26,6 +26,7 @@ import xyz.playedu.course.service.UserCourseHourRecordService;
 import xyz.playedu.course.service.UserCourseRecordService;
 import xyz.playedu.course.service.UserLearnDurationRecordService;
 import xyz.playedu.course.service.UserLearnDurationStatsService;
+import xyz.playedu.course.service.impl.DailyLearningRankingService;
 
 /**
  * @Author 杭州白书科技有限公司
@@ -46,6 +47,8 @@ public class UserDestroyListener {
 
     @Autowired private UserLearnDurationStatsService userLearnDurationStatsService;
 
+    @Autowired private DailyLearningRankingService dailyLearningRankingService;
+
     @Autowired private UserLoginRecordService userLoginRecordService;
 
     @EventListener
@@ -55,6 +58,15 @@ public class UserDestroyListener {
         userCourseRecordService.destroy(event.getUserId());
         userLearnDurationRecordService.remove(event.getUserId());
         userLearnDurationStatsService.remove(event.getUserId());
+        try {
+            dailyLearningRankingService.removeUser(event.getUserId());
+        } catch (RuntimeException exception) {
+            log.atError()
+                    .setMessage("learning_ranking_user_cleanup_failed")
+                    .addKeyValue("user_id", event.getUserId())
+                    .setCause(exception)
+                    .log();
+        }
         userLoginRecordService.remove(event.getUserId());
     }
 }

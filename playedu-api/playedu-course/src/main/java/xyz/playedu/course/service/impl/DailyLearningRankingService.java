@@ -21,15 +21,15 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.DefaultTypedTuple;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 import xyz.playedu.common.redis.RedisDistributedLock;
 import xyz.playedu.common.redis.RedisKeyspace;
@@ -43,6 +43,63 @@ public class DailyLearningRankingService {
     public static final String REDIS_MODULE = "learning-ranking";
     public static final int TOP_LIMIT = 10;
     public static final Duration KEY_RETENTION = Duration.ofDays(7);
+    private static final String READY_MARKER = "ready";
+    private static final String READY_VALUE = "ready";
+    private static final String EMPTY_VALUE = "empty";
+    private static final RedisScript<Long> REBUILD_SCRIPT =
+            new DefaultRedisScript<>(
+                    """
+                    local ttl = ARGV[#ARGV]
+                    redis.call('DEL', KEYS[1])
+                    local index = 1
+                    while index < #ARGV do
+                        redis.call('ZADD', KEYS[1], ARGV[index], ARGV[index + 1])
+                        index = index + 2
+                    end
+                    if index > 1 then
+                        if redis.call('EXPIRE', KEYS[1], ttl) == 0 then
+                            return 0
+                        end
+                        redis.call('SET', KEYS[2], 'ready', 'EX', ttl)
+                    else
+                        redis.call('SET', KEYS[2], 'empty', 'EX', ttl)
+                    end
+                    return 1
+                    """,
+                    Long.class);
+    private static final RedisScript<Long> RECONCILE_SCRIPT =
+            new DefaultRedisScript<>(
+                    """
+                    local target = tonumber(ARGV[1])
+                    local member = ARGV[2]
+                    local ttl = ARGV[3]
+                    local current = redis.call('ZSCORE', KEYS[1], member)
+                    if current == false then
+                        current = 0
+                    else
+                        current = tonumber(current)
+                    end
+                    if target == 0 then
+                        redis.call('ZREM', KEYS[1], member)
+                    elseif target ~= current then
+                        redis.call('ZINCRBY', KEYS[1], target - current, member)
+                    end
+                    if target > 0 then
+                        if redis.call('EXPIRE', KEYS[1], ttl) == 0 then
+                            return 0
+                        end
+                        redis.call('SET', KEYS[2], 'ready', 'EX', ttl)
+                    elseif redis.call('ZCARD', KEYS[1]) > 0 then
+                        if redis.call('EXPIRE', KEYS[1], ttl) == 0 then
+                            return 0
+                        end
+                        redis.call('SET', KEYS[2], 'ready', 'EX', ttl)
+                    else
+                        redis.call('SET', KEYS[2], 'empty', 'EX', ttl)
+                    end
+                    return 1
+                    """,
+                    Long.class);
 
     private final StringRedisTemplate redisTemplate;
     private final RedisKeyspace keyspace;
@@ -113,7 +170,7 @@ public class DailyLearningRankingService {
 
     private List<UserLearnDurationStats> top10For(LocalDate learningDate) {
         String key = key(learningDate);
-        if (!Boolean.TRUE.equals(redisTemplate.hasKey(key))) {
+        if (!projectionReady(learningDate)) {
             rebuildForDate(learningDate);
         }
 
@@ -138,9 +195,39 @@ public class DailyLearningRankingService {
     }
 
     private void rebuildIfMissing(LocalDate learningDate) {
-        if (!Boolean.TRUE.equals(redisTemplate.hasKey(key(learningDate)))) {
+        if (!projectionReady(learningDate)) {
             rebuildForDate(learningDate);
         }
+    }
+
+    /** Removes a deleted student's member from the two dashboard-visible buckets. */
+    public void removeUser(Integer userId) {
+        Objects.requireNonNull(userId, "userId must not be null");
+        LocalDate today = currentDate();
+        removeUserFromDate(userId, today);
+        removeUserFromDate(userId, today.minusDays(1));
+    }
+
+    private boolean projectionReady(LocalDate learningDate) {
+        String marker = redisTemplate.opsForValue().get(readyKey(learningDate));
+        if (EMPTY_VALUE.equals(marker)) {
+            return !Boolean.TRUE.equals(redisTemplate.hasKey(key(learningDate)));
+        }
+        return READY_VALUE.equals(marker)
+                && Boolean.TRUE.equals(redisTemplate.hasKey(key(learningDate)));
+    }
+
+    private void removeUserFromDate(Integer userId, LocalDate learningDate) {
+        distributedLock.execute(
+                REDIS_MODULE,
+                learningDate.toString(),
+                () -> {
+                    if (!projectionReady(learningDate)) {
+                        replaceFromAuthority(learningDate);
+                    }
+                    reconcileProjection(learningDate, userId, 0L);
+                    return null;
+                });
     }
 
     private void rebuildForDate(LocalDate learningDate) {
@@ -156,6 +243,9 @@ public class DailyLearningRankingService {
     private void replaceFromAuthority(LocalDate learningDate) {
         List<UserLearnDurationStats> records =
                 statsMapper.rankingByDate(Date.valueOf(learningDate));
+        if (records == null) {
+            records = List.of();
+        }
         Map<String, Double> entries = new LinkedHashMap<>();
         for (UserLearnDurationStats record : records) {
             if (record.getUserId() == null || record.getDuration() == null) {
@@ -165,60 +255,54 @@ public class DailyLearningRankingService {
                     record.getUserId().toString(), record.getDuration().doubleValue(), Double::sum);
         }
 
-        String key = key(learningDate);
-        redisTemplate.delete(key);
-        if (entries.isEmpty()) {
-            return;
-        }
-
-        Set<ZSetOperations.TypedTuple<String>> redisEntries = new LinkedHashSet<>();
+        List<String> scriptArguments = new ArrayList<>(entries.size() * 2 + 1);
         entries.forEach(
-                (member, score) -> redisEntries.add(new DefaultTypedTuple<>(member, score)));
-        Long added = redisTemplate.opsForZSet().add(key, redisEntries);
-        if (added == null || added <= 0) {
+                (member, score) -> {
+                    scriptArguments.add(score.toString());
+                    scriptArguments.add(member);
+                });
+        scriptArguments.add(Long.toString(KEY_RETENTION.toSeconds()));
+        Long rebuilt =
+                redisTemplate.execute(
+                        REBUILD_SCRIPT,
+                        List.of(key(learningDate), readyKey(learningDate)),
+                        scriptArguments.toArray());
+        if (rebuilt == null || rebuilt <= 0) {
             throw new IllegalStateException("Could not rebuild the learning ranking projection");
-        }
-        Boolean expired = redisTemplate.expire(key, KEY_RETENTION);
-        if (!Boolean.TRUE.equals(expired)) {
-            throw new IllegalStateException("Could not retain the learning ranking projection");
         }
     }
 
     private void reconcile(LocalDate learningDate, Integer userId, long duration) {
         // The event delta is only the trigger; the source total prevents a rebuild race
         // from applying the same committed increment twice.
-        String key = key(learningDate);
-        String member = userId.toString();
+        if (!projectionReady(learningDate)) {
+            replaceFromAuthority(learningDate);
+        }
         Long authoritativeDuration =
                 statsMapper.durationByUserAndDate(userId, Date.valueOf(learningDate));
         long targetScore = authoritativeDuration == null ? 0L : authoritativeDuration;
-        Double projectedScore = redisTemplate.opsForZSet().score(key, member);
-        long currentScore = projectedScore == null ? 0L : Math.round(projectedScore);
-        long correction = targetScore - currentScore;
+        reconcileProjection(learningDate, userId, targetScore);
+    }
 
-        if (correction > 0) {
-            Double newScore = redisTemplate.opsForZSet().incrementScore(key, member, correction);
-            if (newScore == null) {
-                throw new IllegalStateException("Could not update the learning ranking projection");
-            }
-        } else if (correction < 0) {
-            if (targetScore == 0) {
-                redisTemplate.opsForZSet().remove(key, member);
-            } else {
-                redisTemplate.opsForZSet().add(key, member, targetScore);
-            }
-        }
-
-        if (targetScore > 0) {
-            Boolean expired = redisTemplate.expire(key, KEY_RETENTION);
-            if (!Boolean.TRUE.equals(expired)) {
-                throw new IllegalStateException("Could not retain the learning ranking projection");
-            }
+    private void reconcileProjection(LocalDate learningDate, Integer userId, long targetScore) {
+        Long reconciled =
+                redisTemplate.execute(
+                        RECONCILE_SCRIPT,
+                        List.of(key(learningDate), readyKey(learningDate)),
+                        Long.toString(targetScore),
+                        userId.toString(),
+                        Long.toString(KEY_RETENTION.toSeconds()));
+        if (reconciled == null || reconciled <= 0) {
+            throw new IllegalStateException("Could not update the learning ranking projection");
         }
     }
 
     private String key(LocalDate learningDate) {
         return keyspace.key(REDIS_MODULE, learningDate.toString());
+    }
+
+    private String readyKey(LocalDate learningDate) {
+        return keyspace.key(REDIS_MODULE, learningDate.toString(), READY_MARKER);
     }
 
     private LocalDate currentDate() {

@@ -187,6 +187,36 @@ class DailyLearningRankingServiceIntegrationTest {
     }
 
     @Test
+    void initializesTheWholeMissingProjectionBeforeApplyingTheFirstEvent() {
+        LocalDate today = LocalDate.now(ZoneId.systemDefault());
+        insertAuthoritativeDuration(7, 1_000L, today);
+        insertAuthoritativeDuration(8, 2_000L, today);
+
+        rankingService.project(7, today, 1_000L);
+
+        assertThat(rankingService.todayTop10())
+                .extracting(UserLearnDurationStats::getUserId)
+                .containsExactly(8, 7);
+        assertThat(rankingService.todayTop10())
+                .extracting(UserLearnDurationStats::getDuration)
+                .containsExactly(2_000L, 1_000L);
+    }
+
+    @Test
+    void removesDeletedStudentsFromVisibleRankings() {
+        LocalDate today = LocalDate.now(ZoneId.systemDefault());
+        insertAuthoritativeDuration(7, 1_000L, today);
+        insertAuthoritativeDuration(8, 2_000L, today);
+        rankingService.rebuildTodayAndYesterday();
+
+        rankingService.removeUser(8);
+
+        assertThat(rankingService.todayTop10())
+                .extracting(UserLearnDurationStats::getUserId)
+                .containsExactly(7);
+    }
+
+    @Test
     void rebuildsBothDaysAfterRedisIsClearedAndIsIdempotent() {
         LocalDate today = LocalDate.now(ZoneId.systemDefault());
         LocalDate yesterday = today.minusDays(1);
