@@ -232,6 +232,15 @@ public class AdminPermissionCheck implements CommandLineRunner {
                                                                         .PASSWORD_CHANGE);
                                                     }
                                                 },
+                                                new AdminPermission() {
+                                                    {
+                                                        setSort(40);
+                                                        setName("实时学习榜重建");
+                                                        setSlug(
+                                                                BPermissionConstant
+                                                                        .LEARNING_RANKING_REBUILD);
+                                                    }
+                                                },
                                             });
                                 }
                             });

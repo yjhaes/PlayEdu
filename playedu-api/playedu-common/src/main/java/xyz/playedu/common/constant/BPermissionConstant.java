@@ -25,6 +25,7 @@ public class BPermissionConstant {
     public static final String ADMIN_USER_CUD = "admin-user-cud";
     public static final String ADMIN_ROLE = "admin-role";
     public static final String ADMIN_LOG = "admin-log";
+    public static final String LEARNING_RANKING_REBUILD = "learning-ranking-rebuild";
     public static final String DEPARTMENT_CUD = "department-cud";
     public static final String DEPARTMENT_USER_LEARN = "department-user-learn";
     public static final String USER_INDEX = "user-index";

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import styles from "./index.module.less";
-import { Row, Col } from "antd";
+import { Row, Col, message } from "antd";
 import { Link, useNavigate } from "react-router-dom";
 import banner from "../../assets/images/dashboard/img-a1.png";
 import icon from "../../assets/images/dashboard/icon-more.png";
@@ -8,6 +8,7 @@ import iconN1 from "../../assets/images/dashboard/icon-n1.png";
 import iconN2 from "../../assets/images/dashboard/icon-n2.png";
 import iconN3 from "../../assets/images/dashboard/icon-n3.png";
 import { Footer } from "../../compenents/footer";
+import { PerButton } from "../../compenents/permission-button";
 import { dashboard } from "../../api/index";
 import { timeFormat } from "../../utils/index";
 import * as echarts from "echarts";
@@ -22,6 +23,10 @@ type BasicDataModel = {
   user_learn_today: number;
   user_learn_top10?: Top10Model[];
   user_learn_top10_users?: Top10UserModel;
+  user_learn_top10_today?: Top10Model[];
+  user_learn_top10_today_users?: Top10UserModel;
+  user_learn_top10_yesterday?: Top10Model[];
+  user_learn_top10_yesterday_users?: Top10UserModel;
   user_learn_yesterday: number;
   user_today: number;
   user_total: number;
@@ -32,12 +37,85 @@ type BasicDataModel = {
 type Top10Model = {
   created_date: string;
   duration: number;
-  id: number;
+  id?: number;
   user_id: number;
 };
 
 type Top10UserModel = {
   [key: number]: UserModel;
+};
+
+type LearningRankingCardProps = {
+  title: string;
+  ranking?: Top10Model[];
+  users?: Top10UserModel;
+  onRebuild?: () => void;
+};
+
+const rankingIcons = [iconN1, iconN2, iconN3];
+
+const LearningRankingCard = ({
+  title,
+  ranking,
+  users,
+  onRebuild,
+}: LearningRankingCardProps) => {
+  const items = ranking ?? [];
+
+  const renderItem = (index: number) => {
+    const item = items[index];
+    const user = item && users ? users[item.user_id] : undefined;
+
+    return (
+      <div className={styles["rank-item"]} key={index}>
+        <div className={styles["left-item"]}>
+          {index < rankingIcons.length ? (
+            <img
+              className={styles["item-icon"]}
+              src={rankingIcons[index]}
+              alt=""
+            />
+          ) : (
+            <div className={styles["item-num"]}>{index + 1}</div>
+          )}
+          {item && (
+            <div className={styles["item-name"]}>{user?.name ?? ""}</div>
+          )}
+        </div>
+        {item && (
+          <div className={styles["item-time"]}>
+            {timeFormat(Number(item.duration) / 1000)}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="playedu-main-top mt-24" style={{ minHeight: 376 }}>
+      <div className="j-b-flex">
+        <div className={styles["large-title"]}>{title}</div>
+        {onRebuild && (
+          <PerButton
+            type="link"
+            text="重建"
+            class="b-link c-red"
+            p="learning-ranking-rebuild"
+            onClick={onRebuild}
+            disabled={null}
+          />
+        )}
+      </div>
+      <div className={styles["rank-list"]}>
+        <div className={styles["half-list"]}>
+          {[0, 1, 2, 3, 4].map(renderItem)}
+        </div>
+        <div className={styles["half-list"]}>
+          {[5, 6, 7, 8, 9].map(renderItem)}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const DashboardPage = () => {
@@ -284,251 +362,27 @@ const DashboardPage = () => {
               </div>
             </div>
           </div>
-          <div className="playedu-main-top mt-24" style={{ minHeight: 376 }}>
-            <div className={styles["large-title"]}>今日学习排行</div>
-            <div className={styles["rank-list"]}>
-              {basicData?.user_learn_top10 && (
-                <div className={styles["half-list"]}>
-                  <div className={styles["rank-item"]}>
-                    <div className={styles["left-item"]}>
-                      <img
-                        className={styles["item-icon"]}
-                        src={iconN1}
-                        alt=""
-                      />
-                      {basicData.user_learn_top10[0] &&
-                        basicData.user_learn_top10_users && (
-                          <div className={styles["item-name"]}>
-                            {
-                              basicData.user_learn_top10_users[
-                                basicData.user_learn_top10[0].user_id
-                              ]?.name
-                            }
-                          </div>
-                        )}
-                    </div>
-                    {basicData.user_learn_top10[0] && (
-                      <div className={styles["item-time"]}>
-                        {timeFormat(
-                          Number(basicData.user_learn_top10[0].duration) / 1000,
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className={styles["rank-item"]}>
-                    <div className={styles["left-item"]}>
-                      <img
-                        className={styles["item-icon"]}
-                        src={iconN2}
-                        alt=""
-                      />
-                      {basicData.user_learn_top10[1] &&
-                        basicData.user_learn_top10_users && (
-                          <div className={styles["item-name"]}>
-                            {
-                              basicData.user_learn_top10_users[
-                                basicData.user_learn_top10[1].user_id
-                              ]?.name
-                            }
-                          </div>
-                        )}
-                    </div>
-                    {basicData.user_learn_top10[1] && (
-                      <div className={styles["item-time"]}>
-                        {timeFormat(
-                          Number(basicData.user_learn_top10[1].duration) / 1000,
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className={styles["rank-item"]}>
-                    <div className={styles["left-item"]}>
-                      <img
-                        className={styles["item-icon"]}
-                        src={iconN3}
-                        alt=""
-                      />
-                      {basicData.user_learn_top10[2] &&
-                        basicData.user_learn_top10_users && (
-                          <div className={styles["item-name"]}>
-                            {
-                              basicData.user_learn_top10_users[
-                                basicData.user_learn_top10[2].user_id
-                              ]?.name
-                            }
-                          </div>
-                        )}
-                    </div>
-                    {basicData.user_learn_top10[2] && (
-                      <div className={styles["item-time"]}>
-                        {timeFormat(
-                          Number(basicData.user_learn_top10[2].duration) / 1000,
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className={styles["rank-item"]}>
-                    <div className={styles["left-item"]}>
-                      <div className={styles["item-num"]}>4</div>
-                      {basicData.user_learn_top10[3] &&
-                        basicData.user_learn_top10_users && (
-                          <div className={styles["item-name"]}>
-                            {
-                              basicData.user_learn_top10_users[
-                                basicData.user_learn_top10[3].user_id
-                              ]?.name
-                            }
-                          </div>
-                        )}
-                    </div>
-                    {basicData.user_learn_top10[3] && (
-                      <div className={styles["item-time"]}>
-                        {timeFormat(
-                          Number(basicData.user_learn_top10[3].duration) / 1000,
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className={styles["rank-item"]}>
-                    <div className={styles["left-item"]}>
-                      <div className={styles["item-num"]}>5</div>
-                      {basicData.user_learn_top10[4] &&
-                        basicData.user_learn_top10_users && (
-                          <div className={styles["item-name"]}>
-                            {
-                              basicData.user_learn_top10_users[
-                                basicData.user_learn_top10[4].user_id
-                              ]?.name
-                            }
-                          </div>
-                        )}
-                    </div>
-                    {basicData.user_learn_top10[4] && (
-                      <div className={styles["item-time"]}>
-                        {timeFormat(
-                          Number(basicData.user_learn_top10[4].duration) / 1000,
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-              {basicData?.user_learn_top10 && (
-                <div className={styles["half-list"]}>
-                  <div className={styles["rank-item"]}>
-                    <div className={styles["left-item"]}>
-                      <div className={styles["item-num"]}>6</div>
-                      {basicData.user_learn_top10[5] &&
-                        basicData.user_learn_top10_users && (
-                          <div className={styles["item-name"]}>
-                            {
-                              basicData.user_learn_top10_users[
-                                basicData.user_learn_top10[5].user_id
-                              ]?.name
-                            }
-                          </div>
-                        )}
-                    </div>
-                    {basicData.user_learn_top10[5] && (
-                      <div className={styles["item-time"]}>
-                        {timeFormat(
-                          Number(basicData.user_learn_top10[5].duration) / 1000,
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className={styles["rank-item"]}>
-                    <div className={styles["left-item"]}>
-                      <div className={styles["item-num"]}>7</div>
-                      {basicData.user_learn_top10[6] &&
-                        basicData.user_learn_top10_users && (
-                          <div className={styles["item-name"]}>
-                            {
-                              basicData.user_learn_top10_users[
-                                basicData.user_learn_top10[6].user_id
-                              ]?.name
-                            }
-                          </div>
-                        )}
-                    </div>
-                    {basicData.user_learn_top10[6] && (
-                      <div className={styles["item-time"]}>
-                        {timeFormat(
-                          Number(basicData.user_learn_top10[6].duration) / 1000,
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className={styles["rank-item"]}>
-                    <div className={styles["left-item"]}>
-                      <div className={styles["item-num"]}>8</div>
-                      {basicData.user_learn_top10[7] &&
-                        basicData.user_learn_top10_users && (
-                          <div className={styles["item-name"]}>
-                            {
-                              basicData.user_learn_top10_users[
-                                basicData.user_learn_top10[7].user_id
-                              ]?.name
-                            }
-                          </div>
-                        )}
-                    </div>
-                    {basicData.user_learn_top10[7] && (
-                      <div className={styles["item-time"]}>
-                        {timeFormat(
-                          Number(basicData.user_learn_top10[7].duration) / 1000,
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className={styles["rank-item"]}>
-                    <div className={styles["left-item"]}>
-                      <div className={styles["item-num"]}>9</div>
-                      {basicData.user_learn_top10[8] &&
-                        basicData.user_learn_top10_users && (
-                          <div className={styles["item-name"]}>
-                            {
-                              basicData.user_learn_top10_users[
-                                basicData.user_learn_top10[8].user_id
-                              ]?.name
-                            }
-                          </div>
-                        )}
-                    </div>
-                    {basicData.user_learn_top10[8] && (
-                      <div className={styles["item-time"]}>
-                        {timeFormat(
-                          Number(basicData.user_learn_top10[8].duration) / 1000,
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className={styles["rank-item"]}>
-                    <div className={styles["left-item"]}>
-                      <div className={styles["item-num"]}>10</div>
-                      {basicData.user_learn_top10[9] &&
-                        basicData.user_learn_top10_users && (
-                          <div className={styles["item-name"]}>
-                            {
-                              basicData.user_learn_top10_users[
-                                basicData.user_learn_top10[9].user_id
-                              ]?.name
-                            }
-                          </div>
-                        )}
-                    </div>
-                    {basicData.user_learn_top10[9] && (
-                      <div className={styles["item-time"]}>
-                        {timeFormat(
-                          Number(basicData.user_learn_top10[9].duration) / 1000,
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          <LearningRankingCard
+            title="今日学习排行"
+            ranking={
+              basicData?.user_learn_top10_today ?? basicData?.user_learn_top10
+            }
+            users={
+              basicData?.user_learn_top10_today_users ??
+              basicData?.user_learn_top10_users
+            }
+            onRebuild={() => {
+              dashboard.rebuildLearningRanking().then(() => {
+                message.success("学习榜重建成功");
+                getData();
+              });
+            }}
+          />
+          <LearningRankingCard
+            title="昨日学习排行"
+            ranking={basicData?.user_learn_top10_yesterday}
+            users={basicData?.user_learn_top10_yesterday_users}
+          />
         </Col>
         <Col span={12}>
           <div className="playedu-main-top">

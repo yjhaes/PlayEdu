@@ -25,6 +25,19 @@
         FROM `user_learn_duration_stats`
         WHERE `created_date` = #{createdDate, jdbcType=DATE}
     </select>
+    <select id="rankingByDate" resultMap="BaseResultMap">
+        SELECT `user_id`, SUM(`duration`) AS `duration`, `created_date`
+        FROM `user_learn_duration_stats`
+        WHERE `created_date` = #{createdDate, jdbcType=DATE}
+        GROUP BY `user_id`, `created_date`
+        ORDER BY `duration` DESC, `user_id` ASC
+    </select>
+    <select id="durationByUserAndDate" resultType="java.lang.Long">
+        SELECT SUM(`duration`)
+        FROM `user_learn_duration_stats`
+        WHERE `user_id` = #{userId}
+          AND `created_date` = #{createdDate, jdbcType=DATE}
+    </select>
     <insert id="increment">
         INSERT INTO `user_learn_duration_stats` (`user_id`, `duration`, `created_date`)
         VALUES (#{userId}, #{duration}, #{createdDate, jdbcType=DATE})

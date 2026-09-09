@@ -22,9 +22,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import xyz.playedu.common.annotation.BackendPermission;
 import xyz.playedu.common.annotation.Log;
+import xyz.playedu.common.constant.BPermissionConstant;
 import xyz.playedu.common.constant.BackendConstant;
 import xyz.playedu.common.constant.BusinessTypeConstant;
 import xyz.playedu.common.constant.SystemConstant;
@@ -34,6 +37,7 @@ import xyz.playedu.common.types.JsonResponse;
 import xyz.playedu.course.domain.UserLearnDurationStats;
 import xyz.playedu.course.service.CourseService;
 import xyz.playedu.course.service.UserLearnDurationStatsService;
+import xyz.playedu.course.service.impl.DailyLearningRankingService;
 import xyz.playedu.resource.service.ResourceService;
 
 /**
@@ -58,6 +62,8 @@ public class DashboardController {
     @Autowired private ResourceService resourceService;
 
     @Autowired private UserLearnDurationStatsService userLearnDurationStatsService;
+
+    @Autowired private DailyLearningRankingService dailyLearningRankingService;
 
     @GetMapping("/index")
     @Log(title = "主面板", businessType = BusinessTypeConstant.GET)
@@ -93,26 +99,38 @@ public class DashboardController {
         data.put("user_learn_today", userLearnDurationStatsService.todayTotal());
         data.put("user_learn_yesterday", userLearnDurationStatsService.yesterdayTotal());
 
-        List<UserLearnDurationStats> userLearnTop10 = userLearnDurationStatsService.top10();
-        Map<Integer, User> top10Users =
-                userService
-                        .chunks(
-                                userLearnTop10.stream()
-                                        .map(UserLearnDurationStats::getUserId)
-                                        .toList(),
-                                new ArrayList<>() {
-                                    {
-                                        add("id");
-                                        add("name");
-                                        add("avatar");
-                                        add("email");
-                                    }
-                                })
-                        .stream()
-                        .collect(Collectors.toMap(User::getId, e -> e));
+        List<UserLearnDurationStats> userLearnTop10 = dailyLearningRankingService.todayTop10();
+        List<UserLearnDurationStats> userLearnYesterdayTop10 =
+                dailyLearningRankingService.yesterdayTop10();
+        Map<Integer, User> top10Users = top10Users(userLearnTop10);
+        Map<Integer, User> yesterdayTop10Users = top10Users(userLearnYesterdayTop10);
         data.put("user_learn_top10", userLearnTop10);
         data.put("user_learn_top10_users", top10Users);
+        data.put("user_learn_top10_today", userLearnTop10);
+        data.put("user_learn_top10_today_users", top10Users);
+        data.put("user_learn_top10_yesterday", userLearnYesterdayTop10);
+        data.put("user_learn_top10_yesterday_users", yesterdayTop10Users);
 
         return JsonResponse.data(data);
+    }
+
+    @BackendPermission(slug = BPermissionConstant.LEARNING_RANKING_REBUILD)
+    @PostMapping("/learning-ranking/rebuild")
+    @Log(title = "实时学习榜-重建", businessType = BusinessTypeConstant.UPDATE)
+    public JsonResponse rebuildLearningRanking() {
+        dailyLearningRankingService.rebuildTodayAndYesterday();
+        return JsonResponse.success();
+    }
+
+    private Map<Integer, User> top10Users(List<UserLearnDurationStats> ranking) {
+        if (ranking.isEmpty()) {
+            return Map.of();
+        }
+        return userService
+                .chunks(
+                        ranking.stream().map(UserLearnDurationStats::getUserId).toList(),
+                        List.of("id", "name", "avatar", "email"))
+                .stream()
+                .collect(Collectors.toMap(User::getId, e -> e));
     }
 }
