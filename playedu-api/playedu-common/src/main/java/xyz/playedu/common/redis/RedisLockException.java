@@ -13,23 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.playedu.api.cache;
+package xyz.playedu.common.redis;
 
-import java.util.concurrent.TimeUnit;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-import xyz.playedu.common.redis.RedisDistributedLock;
+import xyz.playedu.common.exception.ServiceException;
 
-@Component
-public class LoginLockCache {
+/** Signals that Redis could not safely grant or maintain a distributed write lock. */
+public class RedisLockException extends ServiceException {
 
-    @Autowired private RedisDistributedLock distributedLock;
-
-    public boolean apply(String username) {
-        return distributedLock.tryLock("login", username, 0, 10L, TimeUnit.SECONDS);
+    public RedisLockException(String message) {
+        super(message);
     }
 
-    public void release(String username) {
-        distributedLock.release("login", username);
+    public RedisLockException(String message, Throwable cause) {
+        super(message, cause);
     }
 }

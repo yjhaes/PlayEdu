@@ -27,7 +27,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import xyz.playedu.api.bus.LoginBus;
 import xyz.playedu.api.cache.LoginLimitCache;
-import xyz.playedu.api.cache.LoginLockCache;
 import xyz.playedu.api.event.UserLogoutEvent;
 import xyz.playedu.api.request.frontend.LoginLdapRequest;
 import xyz.playedu.api.request.frontend.LoginPasswordRequest;
@@ -35,6 +34,8 @@ import xyz.playedu.common.context.FCtx;
 import xyz.playedu.common.domain.User;
 import xyz.playedu.common.exception.LimitException;
 import xyz.playedu.common.exception.ServiceException;
+import xyz.playedu.common.redis.RedisDistributedLock;
+import xyz.playedu.common.redis.RedisLockException;
 import xyz.playedu.common.service.*;
 import xyz.playedu.common.types.JsonResponse;
 import xyz.playedu.common.types.LdapConfig;
@@ -59,7 +60,7 @@ public class LoginController {
 
     @Autowired private LoginLimitCache loginLimitCache;
 
-    @Autowired private LoginLockCache loginLockCache;
+    @Autowired private RedisDistributedLock distributedLock;
 
     @PostMapping("/password")
     @SneakyThrows
@@ -98,42 +99,35 @@ public class LoginController {
 
         LdapConfig ldapConfig = appConfigService.ldapConfig();
 
-        String mail = null;
-        String uid = null;
-        if (StringUtil.contains(username, "@")) {
-            mail = username;
-        } else {
-            uid = username;
-        }
+        String mail = StringUtil.contains(username, "@") ? username : null;
+        String uid = StringUtil.contains(username, "@") ? null : username;
 
         // 限流控制
         loginLimitCache.check(username);
 
-        // 锁控制-防止并发登录重复写入数据
-        if (!loginLockCache.apply(username)) {
-            return JsonResponse.error("请稍候再试");
-        }
-
         try {
-            LdapTransformUser ldapTransformUser =
-                    LdapUtil.loginByMailOrUid(ldapConfig, mail, uid, req.getPassword());
-            if (ldapTransformUser == null) {
-                return JsonResponse.error("登录失败.请检查账号和密码");
-            }
+            return distributedLock.execute(
+                    "login",
+                    username,
+                    () -> {
+                        LdapTransformUser ldapTransformUser =
+                                ldapLogin(ldapConfig, mail, uid, req.getPassword());
+                        if (ldapTransformUser == null) {
+                            return JsonResponse.error("登录失败.请检查账号和密码");
+                        }
 
-            HashMap<String, Object> data = loginBus.tokenByLdapTransformUser(ldapTransformUser);
-
-            // 删除限流控制
-            loginLimitCache.destroy(username);
-
-            return JsonResponse.data(data);
+                        HashMap<String, Object> data =
+                                loginBus.tokenByLdapTransformUser(ldapTransformUser);
+                        loginLimitCache.destroy(username);
+                        return JsonResponse.data(data);
+                    });
+        } catch (RedisLockException e) {
+            return JsonResponse.error("请稍候再试");
         } catch (ServiceException e) {
             return JsonResponse.error(e.getMessage());
         } catch (Exception e) {
             log.error("LDAP登录失败", e);
             return JsonResponse.error("系统错误");
-        } finally {
-            loginLockCache.release(username);
         }
     }
 
@@ -142,5 +136,22 @@ public class LoginController {
         authService.logout();
         ctx.publishEvent(new UserLogoutEvent(this, FCtx.getId(), FCtx.getJwtJti()));
         return JsonResponse.success();
+    }
+
+    private LdapTransformUser ldapLogin(
+            LdapConfig config, String mail, String uid, String password) {
+        try {
+            return LdapUtil.loginByMailOrUid(config, mail, uid, password);
+        } catch (ServiceException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new LdapLoginException(exception);
+        }
+    }
+
+    private static class LdapLoginException extends RuntimeException {
+        private LdapLoginException(Exception cause) {
+            super(cause);
+        }
     }
 }

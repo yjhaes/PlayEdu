@@ -26,7 +26,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import org.apache.ibatis.annotations.Mapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +50,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 import xyz.playedu.common.redis.RedisDistributedLock;
 import xyz.playedu.common.redis.RedisKeyspace;
+import xyz.playedu.common.redis.RedisLockException;
 import xyz.playedu.common.redis.RedisRuntimeConfiguration;
 import xyz.playedu.course.event.DailyLearningDurationConfirmedEvent;
 import xyz.playedu.course.event.DailyLearningDurationEventPublisher;
@@ -273,13 +273,12 @@ class LearningFactPersistenceServiceIntegrationTest {
         try {
             return executor.submit(
                             () -> {
-                                boolean acquired =
-                                        distributedLock.tryLock(
-                                                "learning-fact", "7", 0, 5, TimeUnit.SECONDS);
-                                if (acquired) {
-                                    distributedLock.release("learning-fact", "7");
+                                try {
+                                    distributedLock.execute("learning-fact", "7", () -> true);
+                                    return true;
+                                } catch (RedisLockException exception) {
+                                    return false;
                                 }
-                                return acquired;
                             })
                     .get();
         } catch (Exception exception) {

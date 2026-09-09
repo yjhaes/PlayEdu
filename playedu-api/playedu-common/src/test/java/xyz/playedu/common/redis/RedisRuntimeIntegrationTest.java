@@ -19,7 +19,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.redisson.api.RLock;
@@ -56,6 +61,8 @@ class RedisRuntimeIntegrationTest {
     @Autowired private RedisKeyspace keyspace;
 
     @Autowired private ApiRequestRateLimiter apiRequestRateLimiter;
+
+    @Autowired private RedisDistributedLock distributedLock;
 
     @DynamicPropertySource
     static void redisProperties(DynamicPropertyRegistry registry) {
@@ -102,6 +109,76 @@ class RedisRuntimeIntegrationTest {
         assertThat(rejectedRequest.allowed()).isFalse();
     }
 
+    @Test
+    void allowsAtMostOneConcurrentExecutorIntoTheSameBusinessLock() throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        AtomicInteger inCriticalSection = new AtomicInteger();
+        AtomicInteger highestConcurrentExecutors = new AtomicInteger();
+
+        try {
+            List<Future<?>> operations =
+                    List.of(
+                            executor.submit(
+                                    () ->
+                                            executeProtectedOperation(
+                                                    ready,
+                                                    start,
+                                                    inCriticalSection,
+                                                    highestConcurrentExecutors)),
+                            executor.submit(
+                                    () ->
+                                            executeProtectedOperation(
+                                                    ready,
+                                                    start,
+                                                    inCriticalSection,
+                                                    highestConcurrentExecutors)));
+
+            assertThat(ready.await(2, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            for (Future<?> operation : operations) {
+                operation.get();
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertThat(highestConcurrentExecutors.get()).isOne();
+    }
+
+    private void executeProtectedOperation(
+            CountDownLatch ready,
+            CountDownLatch start,
+            AtomicInteger inCriticalSection,
+            AtomicInteger highestConcurrentExecutors) {
+        ready.countDown();
+        try {
+            start.await();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(
+                    "Interrupted while preparing concurrent lock test", exception);
+        }
+        distributedLock.execute(
+                "test-write",
+                "learner-42",
+                () -> {
+                    int currentExecutors = inCriticalSection.incrementAndGet();
+                    highestConcurrentExecutors.accumulateAndGet(currentExecutors, Math::max);
+                    try {
+                        Thread.sleep(150);
+                    } catch (InterruptedException exception) {
+                        Thread.currentThread().interrupt();
+                        throw new IllegalStateException(
+                                "Interrupted while executing concurrent lock test", exception);
+                    } finally {
+                        inCriticalSection.decrementAndGet();
+                    }
+                    return null;
+                });
+    }
+
     private boolean waitForExpiry(String key) throws InterruptedException {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
         while (System.nanoTime() < deadline) {
@@ -115,6 +192,11 @@ class RedisRuntimeIntegrationTest {
 
     @SpringBootConfiguration
     @EnableAutoConfiguration
-    @Import({RedisRuntimeConfiguration.class, ApiRequestRateLimiter.class})
+    @Import({
+        RedisRuntimeConfiguration.class,
+        ApiRequestRateLimiter.class,
+        RedisDistributedLock.class,
+        RedisKeyspace.class
+    })
     static class TestApplication {}
 }

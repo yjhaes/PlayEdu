@@ -16,13 +16,11 @@
 package xyz.playedu.course.service;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import xyz.playedu.common.exception.ServiceException;
 import xyz.playedu.common.redis.RedisDistributedLock;
+import xyz.playedu.common.redis.RedisLockException;
 import xyz.playedu.course.domain.UserCourseHourRecord;
 import xyz.playedu.course.event.DailyLearningDurationEventPublisher;
 import xyz.playedu.course.event.DailyLearningDurationIncrement;
@@ -63,46 +61,50 @@ public class LearningFactPersistenceService {
             Integer hourId,
             Integer watchedDuration,
             Integer hourDuration) {
-        if (!distributedLock.tryLock("learning-fact", userId.toString(), 5, 30, TimeUnit.SECONDS)) {
+        try {
+            distributedLock.execute(
+                    "learning-fact",
+                    userId.toString(),
+                    () -> {
+                        persistLearningFacts(
+                                userId, courseId, hourId, watchedDuration, hourDuration);
+                        return null;
+                    });
+        } catch (RedisLockException exception) {
             throw new ServiceException("学习记录繁忙，请重试");
         }
+    }
 
-        try {
-            UserCourseHourRecord previous =
-                    userCourseHourRecordService.find(userId, courseId, hourId);
-            int previousDuration = previous == null ? 0 : previous.getFinishedDuration();
-            int acceptedDuration = Math.min(watchedDuration, hourDuration);
-            if (acceptedDuration <= previousDuration
-                    || (previous != null && previous.getIsFinished() == 1)) {
-                return;
-            }
+    private void persistLearningFacts(
+            Integer userId,
+            Integer courseId,
+            Integer hourId,
+            Integer watchedDuration,
+            Integer hourDuration) {
+        UserCourseHourRecord previous = userCourseHourRecordService.find(userId, courseId, hourId);
+        int previousDuration = previous == null ? 0 : previous.getFinishedDuration();
+        int acceptedDuration = Math.min(watchedDuration, hourDuration);
+        if (acceptedDuration <= previousDuration
+                || (previous != null && previous.getIsFinished() == 1)) {
+            return;
+        }
 
-            userCourseHourRecordService.storeOrUpdate(
-                    userId, courseId, hourId, acceptedDuration, hourDuration);
-            Integer hourCount = courseHourService.getCountByCourseId(courseId);
-            Integer finishedCount =
-                    userCourseHourRecordService.getFinishedHourCount(userId, courseId);
-            userCourseRecordService.storeOrUpdate(userId, courseId, hourCount, finishedCount);
+        userCourseHourRecordService.storeOrUpdate(
+                userId, courseId, hourId, acceptedDuration, hourDuration);
+        Integer hourCount = courseHourService.getCountByCourseId(courseId);
+        Integer finishedCount = userCourseHourRecordService.getFinishedHourCount(userId, courseId);
+        userCourseRecordService.storeOrUpdate(userId, courseId, hourCount, finishedCount);
 
-            long endedAt = System.currentTimeMillis();
-            long duration = (long) (acceptedDuration - previousDuration) * 1000;
-            long startedAt = endedAt - duration;
-            List<DailyLearningDurationIncrement> durationIncrements =
-                    userLearnDurationStatsService.storeOrUpdate(userId, startedAt, endedAt);
-            userLearnDurationRecordService.store(
-                    userId, courseId + "_" + hourId, "hour", startedAt, endedAt);
-            for (DailyLearningDurationIncrement increment : durationIncrements) {
-                durationEventPublisher.publishAfterCommit(
-                        userId, increment.learningDate(), increment.duration());
-            }
-        } finally {
-            TransactionSynchronizationManager.registerSynchronization(
-                    new TransactionSynchronization() {
-                        @Override
-                        public void afterCompletion(int status) {
-                            distributedLock.release("learning-fact", userId.toString());
-                        }
-                    });
+        long endedAt = System.currentTimeMillis();
+        long duration = (long) (acceptedDuration - previousDuration) * 1000;
+        long startedAt = endedAt - duration;
+        List<DailyLearningDurationIncrement> durationIncrements =
+                userLearnDurationStatsService.storeOrUpdate(userId, startedAt, endedAt);
+        userLearnDurationRecordService.store(
+                userId, courseId + "_" + hourId, "hour", startedAt, endedAt);
+        for (DailyLearningDurationIncrement increment : durationIncrements) {
+            durationEventPublisher.publishAfterCommit(
+                    userId, increment.learningDate(), increment.duration());
         }
     }
 }

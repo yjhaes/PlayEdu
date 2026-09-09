@@ -16,7 +16,6 @@
 package xyz.playedu.system.aspectj;
 
 import java.lang.reflect.Method;
-import java.util.concurrent.TimeUnit;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -26,6 +25,7 @@ import org.springframework.stereotype.Component;
 import xyz.playedu.common.annotation.Lock;
 import xyz.playedu.common.exception.LimitException;
 import xyz.playedu.common.redis.RedisDistributedLock;
+import xyz.playedu.common.redis.RedisLockException;
 
 @Aspect
 @Component
@@ -42,16 +42,27 @@ public class LockAspect {
         Method method = signature.getMethod();
         Lock lock = method.getAnnotation(Lock.class);
         String key = lock.key();
-        long expire = lock.expire();
-        TimeUnit timeUnit = lock.timeUnit();
-        boolean success = distributedLock.tryLock("aspect", key, 0, expire, timeUnit);
-        if (!success) {
+        try {
+            return distributedLock.execute(
+                    "aspect",
+                    key,
+                    () -> {
+                        try {
+                            return joinPoint.proceed();
+                        } catch (Throwable exception) {
+                            throw new JoinPointExecutionException(exception);
+                        }
+                    });
+        } catch (JoinPointExecutionException exception) {
+            throw exception.getCause();
+        } catch (RedisLockException exception) {
             throw new LimitException("请稍后再试");
         }
-        try {
-            return joinPoint.proceed();
-        } finally {
-            distributedLock.release("aspect", key);
+    }
+
+    private static class JoinPointExecutionException extends RuntimeException {
+        private JoinPointExecutionException(Throwable cause) {
+            super(cause);
         }
     }
 }
