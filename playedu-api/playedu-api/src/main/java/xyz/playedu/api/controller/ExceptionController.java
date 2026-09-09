@@ -33,6 +33,7 @@ import xyz.playedu.common.exception.LimitException;
 import xyz.playedu.common.exception.NotFoundException;
 import xyz.playedu.common.exception.ServiceException;
 import xyz.playedu.common.redis.ApiRateLimitUnavailableException;
+import xyz.playedu.common.redis.LearningLeaseUnavailableException;
 import xyz.playedu.common.redis.LoginFailureTrackingUnavailableException;
 import xyz.playedu.common.types.JsonResponse;
 
@@ -107,6 +108,14 @@ public class ExceptionController {
         log.error("登录保护服务不可用", exception);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(JsonResponse.error("登录保护服务暂不可用，请稍后重试", 503));
+    }
+
+    @ExceptionHandler(LearningLeaseUnavailableException.class)
+    public ResponseEntity<JsonResponse> learningLeaseUnavailableHandler(
+            LearningLeaseUnavailableException exception) {
+        log.error("学习心跳 Redis 服务不可用", exception);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(JsonResponse.error("学习心跳服务暂不可用，请稍后重试", 503));
     }
 
     @ExceptionHandler(AmazonS3Exception.class)

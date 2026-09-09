@@ -21,16 +21,17 @@ import lombok.SneakyThrows;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import xyz.playedu.api.request.frontend.CourseHourRecordRequest;
+import xyz.playedu.api.request.frontend.LearningHeartbeatRequest;
+import xyz.playedu.api.request.frontend.LearningStopRequest;
 import xyz.playedu.common.context.FCtx;
 import xyz.playedu.common.types.JsonResponse;
 import xyz.playedu.course.caches.UserCanSeeCourseCache;
 import xyz.playedu.course.domain.Course;
 import xyz.playedu.course.domain.CourseHour;
 import xyz.playedu.course.domain.UserCourseHourRecord;
+import xyz.playedu.course.service.ActiveLearningLeaseService;
 import xyz.playedu.course.service.CourseHourService;
 import xyz.playedu.course.service.CourseService;
-import xyz.playedu.course.service.LearningFactPersistenceService;
 import xyz.playedu.course.service.UserCourseHourRecordService;
 import xyz.playedu.resource.domain.Resource;
 import xyz.playedu.resource.service.ResourceService;
@@ -44,6 +45,10 @@ import xyz.playedu.resource.service.ResourceService;
 @RequestMapping("/api/v1/course/{courseId}/hour")
 public class HourController {
 
+    private static final int ACTIVE_LEARNING_CONFLICT_CODE = 40901;
+
+    private static final int INVALID_LEARNING_SESSION_CODE = 40902;
+
     @Autowired private CourseService courseService;
 
     @Autowired private CourseHourService hourService;
@@ -55,7 +60,7 @@ public class HourController {
     // ------- CACHE ----------
     @Autowired private UserCanSeeCourseCache userCanSeeCourseCache;
 
-    @Autowired private LearningFactPersistenceService learningFactPersistenceService;
+    @Autowired private ActiveLearningLeaseService activeLearningLeaseService;
 
     @GetMapping("/{id}")
     @SneakyThrows
@@ -106,35 +111,62 @@ public class HourController {
 
     @PostMapping("/{id}/record")
     @SneakyThrows
-    public JsonResponse record(
-            @PathVariable(name = "courseId") Integer courseId,
-            @PathVariable(name = "id") Integer id,
-            @RequestBody @Validated CourseHourRecordRequest req) {
-        return recordLearningFact(courseId, id, req);
+    public JsonResponse record(@PathVariable(name = "courseId") Integer courseId) {
+        return rejectClientDurationReport(courseId);
     }
 
     @PostMapping("/{id}/ping")
     @SneakyThrows
     public JsonResponse ping(
             @PathVariable(name = "courseId") Integer courseId,
-            @PathVariable(name = "id") Integer id) {
+            @PathVariable(name = "id") Integer id,
+            @RequestBody(required = false) LearningHeartbeatRequest request) {
         userCanSeeCourseCache.check(FCtx.getId(), courseId, true);
+        CourseHour hour = hourService.findOrFail(id, courseId);
+        String sessionId = request == null ? null : request.getSessionId();
+        ActiveLearningLeaseService.HeartbeatResult result =
+                activeLearningLeaseService.heartbeat(
+                        FCtx.getId(), courseId, hour.getId(), sessionId, hour.getDuration());
+        if (result.outcome() == ActiveLearningLeaseService.Outcome.CONFLICT) {
+            return new JsonResponse(
+                    ACTIVE_LEARNING_CONFLICT_CODE, "当前存在活跃学习课时", activeLearningData(result));
+        }
+        if (result.outcome() == ActiveLearningLeaseService.Outcome.INVALID_SESSION) {
+            return new JsonResponse(
+                    INVALID_LEARNING_SESSION_CODE, "学习会话已失效", activeLearningData(result));
+        }
+        return JsonResponse.data(activeLearningData(result));
+    }
+
+    @DeleteMapping("/{id}/ping")
+    @SneakyThrows
+    public JsonResponse stopPing(
+            @PathVariable(name = "courseId") Integer courseId,
+            @PathVariable(name = "id") Integer id,
+            @RequestBody @Validated LearningStopRequest request) {
+        userCanSeeCourseCache.check(FCtx.getId(), courseId, true);
+        ActiveLearningLeaseService.Outcome outcome =
+                activeLearningLeaseService.stop(FCtx.getId(), courseId, id, request.getSessionId());
+        if (outcome == ActiveLearningLeaseService.Outcome.INVALID_SESSION
+                || outcome == ActiveLearningLeaseService.Outcome.CONFLICT) {
+            return new JsonResponse(INVALID_LEARNING_SESSION_CODE, "学习会话已失效", null);
+        }
         return JsonResponse.success();
     }
 
     @SneakyThrows
-    private JsonResponse recordLearningFact(
-            Integer courseId, Integer hourId, CourseHourRecordRequest request) {
-        Integer duration = request.getDuration();
-        if (duration <= 0) {
-            return JsonResponse.error("duration参数错误");
-        }
-
-        CourseHour hour = hourService.findOrFail(hourId, courseId);
+    private JsonResponse rejectClientDurationReport(Integer courseId) {
         userCanSeeCourseCache.check(FCtx.getId(), courseId, true);
-        learningFactPersistenceService.record(
-                FCtx.getId(), courseId, hour.getId(), duration, hour.getDuration());
+        return JsonResponse.error("请通过学习心跳记录学习时长", 400);
+    }
 
-        return JsonResponse.success();
+    private HashMap<String, Object> activeLearningData(
+            ActiveLearningLeaseService.HeartbeatResult result) {
+        HashMap<String, Object> data = new HashMap<>();
+        data.put("session_id", result.sessionId());
+        data.put("added_duration", result.addedDuration());
+        data.put("active_course_id", result.activeCourseId());
+        data.put("active_hour_id", result.activeHourId());
+        return data;
     }
 }

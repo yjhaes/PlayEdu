@@ -75,6 +75,39 @@ public class LearningFactPersistenceService {
         }
     }
 
+    /** Records a server-confirmed continuous interval without trusting a client progress value. */
+    @Transactional
+    public void recordIncrement(
+            Integer userId,
+            Integer courseId,
+            Integer hourId,
+            Integer durationIncrement,
+            Integer hourDuration) {
+        if (durationIncrement <= 0) {
+            return;
+        }
+        try {
+            distributedLock.execute(
+                    "learning-fact",
+                    userId.toString(),
+                    () -> {
+                        UserCourseHourRecord previous =
+                                userCourseHourRecordService.find(userId, courseId, hourId);
+                        int previousDuration =
+                                previous == null ? 0 : previous.getFinishedDuration();
+                        persistLearningFacts(
+                                userId,
+                                courseId,
+                                hourId,
+                                previousDuration + durationIncrement,
+                                hourDuration);
+                        return null;
+                    });
+        } catch (RedisLockException exception) {
+            throw new ServiceException("学习记录繁忙，请重试");
+        }
+    }
+
     private void persistLearningFacts(
             Integer userId,
             Integer courseId,
