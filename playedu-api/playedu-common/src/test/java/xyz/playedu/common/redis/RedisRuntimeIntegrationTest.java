@@ -27,8 +27,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.redisson.Redisson;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.redisson.config.Config;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -50,6 +52,8 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers(disabledWithoutDocker = true)
 class RedisRuntimeIntegrationTest {
 
+    private static final int TEST_REDIS_DATABASE = 5;
+
     @Container
     static final GenericContainer<?> REDIS =
             new GenericContainer<>(DockerImageName.parse("redis:7.4-alpine"))
@@ -69,7 +73,7 @@ class RedisRuntimeIntegrationTest {
     static void redisProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.data.redis.host", REDIS::getHost);
         registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
-        registry.add("spring.data.redis.database", () -> 5);
+        registry.add("spring.data.redis.database", () -> TEST_REDIS_DATABASE);
         registry.add("spring.data.redis.timeout", () -> "2s");
         registry.add("playedu.redis.key-prefix", () -> "playedu:test");
     }
@@ -101,13 +105,53 @@ class RedisRuntimeIntegrationTest {
                 lock.unlock();
             }
         }
+    }
 
-        ApiRequestRateLimiter.RateLimitDecision firstRequest =
-                apiRequestRateLimiter.acquire("198.51.100.42", 1, 1);
-        ApiRequestRateLimiter.RateLimitDecision rejectedRequest =
-                apiRequestRateLimiter.acquire("198.51.100.42", 1, 1);
-        assertThat(firstRequest.allowed()).isTrue();
-        assertThat(rejectedRequest.allowed()).isFalse();
+    @Test
+    void refillsTokensAfterTheConfiguredWindowAndAllowsABoundedBurst() throws Exception {
+        String clientIp = "198.51.100.43";
+
+        assertThat(apiRequestRateLimiter.acquire(clientIp, 3, 1).allowed()).isTrue();
+        assertThat(apiRequestRateLimiter.acquire(clientIp, 3, 1).allowed()).isTrue();
+        assertThat(apiRequestRateLimiter.acquire(clientIp, 3, 1).allowed()).isTrue();
+
+        ApiRequestRateLimiter.RateLimitDecision exhausted =
+                apiRequestRateLimiter.acquire(clientIp, 3, 1);
+        assertThat(exhausted.allowed()).isFalse();
+        assertThat(exhausted.remaining()).isZero();
+
+        ApiRequestRateLimiter.RateLimitDecision recovered =
+                waitForRateLimiterRecovery(clientIp, 3, 1);
+        assertThat(recovered.allowed()).isTrue();
+        assertThat(recovered.remaining()).isBetween(0L, 2L);
+    }
+
+    @Test
+    void keepsQuotasSeparateForDifferentClientIps() {
+        assertThat(apiRequestRateLimiter.acquire("198.51.100.44", 1, 5).allowed()).isTrue();
+        assertThat(apiRequestRateLimiter.acquire("198.51.100.45", 1, 5).allowed()).isTrue();
+        assertThat(apiRequestRateLimiter.acquire("198.51.100.44", 1, 5).allowed()).isFalse();
+        assertThat(apiRequestRateLimiter.acquire("198.51.100.45", 1, 5).allowed()).isFalse();
+    }
+
+    @Test
+    void sharesOneClientQuotaBetweenSeparateRedissonClients() {
+        RedissonClient secondRedisson = createSecondRedissonClient();
+        ApiRequestRateLimiter secondInstance = new ApiRequestRateLimiter(keyspace, secondRedisson);
+        String clientIp = "198.51.100.46";
+
+        try {
+            assertThat(apiRequestRateLimiter.acquire(clientIp, 3, 5).allowed()).isTrue();
+            assertThat(secondInstance.acquire(clientIp, 3, 5).allowed()).isTrue();
+            assertThat(apiRequestRateLimiter.acquire(clientIp, 3, 5).allowed()).isTrue();
+
+            ApiRequestRateLimiter.RateLimitDecision exhausted =
+                    secondInstance.acquire(clientIp, 3, 5);
+            assertThat(exhausted.allowed()).isFalse();
+            assertThat(exhausted.remaining()).isZero();
+        } finally {
+            secondRedisson.shutdown();
+        }
     }
 
     @Test
@@ -189,6 +233,29 @@ class RedisRuntimeIntegrationTest {
             Thread.sleep(20);
         }
         return false;
+    }
+
+    private ApiRequestRateLimiter.RateLimitDecision waitForRateLimiterRecovery(
+            String clientIp, long permitsPerWindow, long windowSeconds)
+            throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2);
+        ApiRequestRateLimiter.RateLimitDecision decision;
+        do {
+            decision = apiRequestRateLimiter.acquire(clientIp, permitsPerWindow, windowSeconds);
+            if (decision.allowed()) {
+                return decision;
+            }
+            Thread.sleep(20);
+        } while (System.nanoTime() < deadline);
+        return decision;
+    }
+
+    private RedissonClient createSecondRedissonClient() {
+        Config config = new Config();
+        config.useSingleServer()
+                .setAddress("redis://" + REDIS.getHost() + ":" + REDIS.getMappedPort(6379))
+                .setDatabase(TEST_REDIS_DATABASE);
+        return Redisson.create(config);
     }
 
     @SpringBootConfiguration

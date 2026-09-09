@@ -40,11 +40,17 @@ public class ApiRequestRateLimiter {
             throw new IllegalArgumentException("Rate limit permits and window must be positive");
         }
 
-        RRateLimiter limiter = redisson.getRateLimiter(keyspace.rateLimiter(subject(clientId)));
-        limiter.trySetRate(
-                RateType.OVERALL, permitsPerWindow, windowSeconds, RateIntervalUnit.SECONDS);
-        boolean allowed = limiter.tryAcquire();
-        return new RateLimitDecision(allowed, Math.max(0, limiter.availablePermits()));
+        try {
+            RRateLimiter limiter = redisson.getRateLimiter(keyspace.rateLimiter(subject(clientId)));
+            limiter.trySetRate(
+                    RateType.OVERALL, permitsPerWindow, windowSeconds, RateIntervalUnit.SECONDS);
+            boolean allowed = limiter.tryAcquire();
+            return new RateLimitDecision(allowed, Math.max(0, limiter.availablePermits()));
+        } catch (RuntimeException exception) {
+            throw new ApiRateLimitUnavailableException(
+                    "API request rate limiting is unavailable because Redis cannot be reached",
+                    exception);
+        }
     }
 
     private String subject(String clientId) {

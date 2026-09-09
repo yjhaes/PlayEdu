@@ -18,6 +18,8 @@ package xyz.playedu.api.controller;
 import com.amazonaws.services.s3.model.AmazonS3Exception;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -30,6 +32,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import xyz.playedu.common.exception.LimitException;
 import xyz.playedu.common.exception.NotFoundException;
 import xyz.playedu.common.exception.ServiceException;
+import xyz.playedu.common.redis.ApiRateLimitUnavailableException;
 import xyz.playedu.common.types.JsonResponse;
 
 @RestControllerAdvice
@@ -87,6 +90,14 @@ public class ExceptionController {
     @ExceptionHandler(LimitException.class)
     public JsonResponse serviceExceptionHandler(LimitException e) {
         return JsonResponse.error("请稍后再试", 429);
+    }
+
+    @ExceptionHandler(ApiRateLimitUnavailableException.class)
+    public ResponseEntity<JsonResponse> apiRateLimitUnavailableHandler(
+            ApiRateLimitUnavailableException exception) {
+        log.error("API 请求限流服务不可用", exception);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(JsonResponse.error("请求限流服务暂不可用", 503));
     }
 
     @ExceptionHandler(AmazonS3Exception.class)
