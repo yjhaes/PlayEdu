@@ -32,6 +32,7 @@ import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -191,7 +192,7 @@ class RedisRuntimeIntegrationTest {
     }
 
     @SpringBootConfiguration
-    @EnableAutoConfiguration
+    @EnableAutoConfiguration(exclude = DataSourceAutoConfiguration.class)
     @Import({
         RedisRuntimeConfiguration.class,
         ApiRequestRateLimiter.class,

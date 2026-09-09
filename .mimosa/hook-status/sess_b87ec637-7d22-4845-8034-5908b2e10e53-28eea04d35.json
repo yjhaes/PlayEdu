@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "mimosa-hook-status/v1",
+  "recordedAt": "2026-09-07T06:20:58.557Z",
+  "sessionId": "sess_b87ec637-7d22-4845-8034-5908b2e10e53",
+  "event": "PostToolUse",
+  "toolName": "Edit",
+  "file": "C:\\Users\\86198\\AppData\\Local\\Temp\\architecture-review-20260907-141544.html",
+  "outcome": "clear",
+  "coverage": "complete",
+  "findingCount": 0,
+  "durationMs": 6,
+  "hostState": "hook_complete",
+  "reportHint": ".mimosa/reports/"
+}
