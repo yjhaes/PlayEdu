@@ -24,8 +24,9 @@ import org.springframework.web.bind.annotation.*;
 import xyz.playedu.api.request.frontend.LearningHeartbeatRequest;
 import xyz.playedu.api.request.frontend.LearningStopRequest;
 import xyz.playedu.common.context.FCtx;
+import xyz.playedu.common.exception.ServiceException;
 import xyz.playedu.common.types.JsonResponse;
-import xyz.playedu.course.caches.UserCanSeeCourseCache;
+import xyz.playedu.course.bus.UserBus;
 import xyz.playedu.course.domain.Course;
 import xyz.playedu.course.domain.CourseHour;
 import xyz.playedu.course.domain.UserCourseHourRecord;
@@ -57,8 +58,7 @@ public class HourController {
 
     @Autowired private UserCourseHourRecordService userCourseHourRecordService;
 
-    // ------- CACHE ----------
-    @Autowired private UserCanSeeCourseCache userCanSeeCourseCache;
+    @Autowired private UserBus userBus;
 
     @Autowired private ActiveLearningLeaseService activeLearningLeaseService;
 
@@ -89,7 +89,7 @@ public class HourController {
     public JsonResponse play(
             @PathVariable(name = "courseId") Integer courseId,
             @PathVariable(name = "id") Integer id) {
-        userCanSeeCourseCache.check(FCtx.getId(), courseId, true);
+        checkCourseAccess(courseId);
         CourseHour hour = hourService.findOrFail(id, courseId);
         Resource resource = resourceService.findOrFail(hour.getRid());
 
@@ -121,7 +121,7 @@ public class HourController {
             @PathVariable(name = "courseId") Integer courseId,
             @PathVariable(name = "id") Integer id,
             @RequestBody(required = false) LearningHeartbeatRequest request) {
-        userCanSeeCourseCache.check(FCtx.getId(), courseId, true);
+        checkCourseAccess(courseId);
         CourseHour hour = hourService.findOrFail(id, courseId);
         String sessionId = request == null ? null : request.getSessionId();
         ActiveLearningLeaseService.HeartbeatResult result =
@@ -144,7 +144,7 @@ public class HourController {
             @PathVariable(name = "courseId") Integer courseId,
             @PathVariable(name = "id") Integer id,
             @RequestBody @Validated LearningStopRequest request) {
-        userCanSeeCourseCache.check(FCtx.getId(), courseId, true);
+        checkCourseAccess(courseId);
         ActiveLearningLeaseService.Outcome outcome =
                 activeLearningLeaseService.stop(FCtx.getId(), courseId, id, request.getSessionId());
         if (outcome == ActiveLearningLeaseService.Outcome.INVALID_SESSION
@@ -156,8 +156,14 @@ public class HourController {
 
     @SneakyThrows
     private JsonResponse rejectClientDurationReport(Integer courseId) {
-        userCanSeeCourseCache.check(FCtx.getId(), courseId, true);
+        checkCourseAccess(courseId);
         return JsonResponse.error("请通过学习心跳记录学习时长", 400);
+    }
+
+    private void checkCourseAccess(Integer courseId) throws ServiceException {
+        if (!userBus.canSeeCourse(FCtx.getId(), courseId)) {
+            throw new ServiceException("无权限观看");
+        }
     }
 
     private HashMap<String, Object> activeLearningData(

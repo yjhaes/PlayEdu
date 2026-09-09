@@ -27,7 +27,6 @@ public class BackendConstant {
                 {
                     add("/backend/v1/system/image-captcha");
                     add("/backend/v1/auth/login");
-                    add("/backend/v1/cache/list");
                 }
             };
 

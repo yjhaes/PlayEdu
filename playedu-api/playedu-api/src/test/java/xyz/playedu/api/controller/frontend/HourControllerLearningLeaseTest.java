@@ -15,9 +15,9 @@
  */
 package xyz.playedu.api.controller.frontend;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -34,7 +34,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import xyz.playedu.api.controller.ExceptionController;
 import xyz.playedu.common.context.FCtx;
 import xyz.playedu.common.redis.LearningLeaseUnavailableException;
-import xyz.playedu.course.caches.UserCanSeeCourseCache;
+import xyz.playedu.course.bus.UserBus;
 import xyz.playedu.course.domain.CourseHour;
 import xyz.playedu.course.service.ActiveLearningLeaseService;
 import xyz.playedu.course.service.CourseHourService;
@@ -44,20 +44,22 @@ class HourControllerLearningLeaseTest {
     private final ActiveLearningLeaseService activeLearningLeaseService =
             mock(ActiveLearningLeaseService.class);
 
+    private UserBus userBus;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() throws Exception {
         HourController controller = new HourController();
         CourseHourService hourService = mock(CourseHourService.class);
-        UserCanSeeCourseCache userCanSeeCourseCache = mock(UserCanSeeCourseCache.class);
+        userBus = mock(UserBus.class);
         CourseHour hour = new CourseHour();
         hour.setId(9);
         hour.setDuration(100);
         when(hourService.findOrFail(9, 8)).thenReturn(hour);
-        when(userCanSeeCourseCache.check(any(), eq(8), eq(true))).thenReturn(true);
+        when(userBus.canSeeCourse(7, 8)).thenReturn(true);
         ReflectionTestUtils.setField(controller, "hourService", hourService);
-        ReflectionTestUtils.setField(controller, "userCanSeeCourseCache", userCanSeeCourseCache);
+        ReflectionTestUtils.setField(controller, "userBus", userBus);
         ReflectionTestUtils.setField(
                 controller, "activeLearningLeaseService", activeLearningLeaseService);
         mockMvc =
@@ -132,5 +134,21 @@ class HourControllerLearningLeaseTest {
                                 .content("{}"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value(503));
+    }
+
+    @Test
+    void rechecksAuthoritativeCourseAccessForEachProgressRequest() throws Exception {
+        when(userBus.canSeeCourse(7, 8)).thenReturn(true, false);
+
+        mockMvc.perform(post("/api/v1/course/8/hour/9/record"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+
+        mockMvc.perform(post("/api/v1/course/8/hour/9/record"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(1))
+                .andExpect(jsonPath("$.msg").value("无权限观看"));
+
+        verify(userBus, times(2)).canSeeCourse(7, 8);
     }
 }

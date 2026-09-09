@@ -29,7 +29,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import xyz.playedu.common.exception.LimitException;
 import xyz.playedu.common.exception.NotFoundException;
 import xyz.playedu.common.exception.ServiceException;
 import xyz.playedu.common.redis.ApiRateLimitUnavailableException;
@@ -87,11 +86,6 @@ public class ExceptionController {
     @ExceptionHandler(NotFoundException.class)
     public JsonResponse serviceExceptionHandler(NotFoundException e) {
         return JsonResponse.error(e.getMessage(), 404);
-    }
-
-    @ExceptionHandler(LimitException.class)
-    public JsonResponse serviceExceptionHandler(LimitException e) {
-        return JsonResponse.error("请稍后再试", 429);
     }
 
     @ExceptionHandler(ApiRateLimitUnavailableException.class)

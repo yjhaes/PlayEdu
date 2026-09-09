@@ -16,8 +16,6 @@
 package xyz.playedu.api.controller.frontend;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -58,7 +56,7 @@ import org.testcontainers.utility.DockerImageName;
 import xyz.playedu.common.context.FCtx;
 import xyz.playedu.common.redis.RedisKeyspace;
 import xyz.playedu.common.redis.RedisRuntimeConfiguration;
-import xyz.playedu.course.caches.UserCanSeeCourseCache;
+import xyz.playedu.course.bus.UserBus;
 import xyz.playedu.course.domain.CourseHour;
 import xyz.playedu.course.service.ActiveLearningLeaseService;
 import xyz.playedu.course.service.CourseHourService;
@@ -91,7 +89,7 @@ class HourControllerLearningLeaseRedisIntegrationTest {
 
     @Autowired private CourseHourService courseHourService;
 
-    @MockBean private UserCanSeeCourseCache userCanSeeCourseCache;
+    @MockBean private UserBus userBus;
 
     @DynamicPropertySource
     static void redisProperties(DynamicPropertyRegistry registry) {
@@ -106,7 +104,7 @@ class HourControllerLearningLeaseRedisIntegrationTest {
         redisTemplate.getConnectionFactory().getConnection().serverCommands().flushDb();
         clock.set(Instant.parse("2026-09-09T00:00:00Z"));
         FCtx.setId(7);
-        when(userCanSeeCourseCache.check(any(), eq(8), eq(true))).thenReturn(true);
+        when(userBus.canSeeCourse(7, 8)).thenReturn(true);
         when(courseHourService.findOrFail(9, 8)).thenReturn(hour(9));
         when(courseHourService.findOrFail(10, 8)).thenReturn(hour(10));
     }
