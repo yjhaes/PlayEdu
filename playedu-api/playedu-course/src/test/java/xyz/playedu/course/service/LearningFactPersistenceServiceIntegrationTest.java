@@ -114,6 +114,8 @@ class LearningFactPersistenceServiceIntegrationTest {
     void setUp() {
         eventCollector.clear();
         jdbcTemplate.execute("DROP TABLE IF EXISTS point_ledgers");
+        jdbcTemplate.execute("DROP TABLE IF EXISTS point_codes");
+        jdbcTemplate.execute("DROP TABLE IF EXISTS point_products");
         jdbcTemplate.execute("DROP TABLE IF EXISTS users");
         jdbcTemplate.execute("DROP TABLE IF EXISTS user_learn_duration_records");
         jdbcTemplate.execute("DROP TABLE IF EXISTS user_learn_duration_stats");
@@ -129,6 +131,49 @@ class LearningFactPersistenceServiceIntegrationTest {
                 ) ENGINE=InnoDB
                 """);
         jdbcTemplate.execute("INSERT INTO users (id, credit1) VALUES (7, 0)");
+        jdbcTemplate.execute(
+                """
+                CREATE TABLE point_products (
+                    id int unsigned NOT NULL AUTO_INCREMENT,
+                    name varchar(191) NOT NULL,
+                    points_price int unsigned NOT NULL,
+                    status varchar(20) NOT NULL,
+                    created_at datetime NOT NULL,
+                    updated_at datetime NOT NULL,
+                    PRIMARY KEY (id)
+                ) ENGINE=InnoDB
+                """);
+        jdbcTemplate.execute(
+                """
+                CREATE TABLE point_codes (
+                    id int unsigned NOT NULL AUTO_INCREMENT,
+                    product_id int unsigned NOT NULL,
+                    code_ciphertext text NOT NULL,
+                    code_digest varchar(191) NOT NULL,
+                    status varchar(20) NOT NULL,
+                    delivered_at datetime NULL,
+                    created_at datetime NOT NULL,
+                    updated_at datetime NOT NULL,
+                    PRIMARY KEY (id),
+                    UNIQUE KEY uk_point_codes_code_digest (code_digest)
+                ) ENGINE=InnoDB
+                """);
+        jdbcTemplate.update(
+                """
+                INSERT INTO point_products (name, points_price, status, created_at, updated_at)
+                VALUES (?, ?, ?, NOW(), NOW())
+                """,
+                "售罄商品",
+                10,
+                "ON_SALE");
+        jdbcTemplate.update(
+                """
+                INSERT INTO point_products (name, points_price, status, created_at, updated_at)
+                VALUES (?, ?, ?, NOW(), NOW())
+                """,
+                "下架商品",
+                10,
+                "OFF_SALE");
         jdbcTemplate.execute(
                 """
                 CREATE TABLE point_ledgers (
@@ -269,11 +314,19 @@ class LearningFactPersistenceServiceIntegrationTest {
     }
 
     @Test
-    void awardsPointsOnlyForTheFirstCourseCompletionEvenAfterLearningRecordsAreReset() {
+    void awardsPointsWithoutRedeemableProductInventoryOnlyForTheFirstCourseCompletion() {
+        assertThat(
+                        jdbcTemplate.queryForObject(
+                                "SELECT COUNT(*) FROM point_codes WHERE status = 'AVAILABLE'",
+                                Integer.class))
+                .isZero();
         assertThat(learningFactPersistenceService.record(7, 8, 9, 100, 100).earnedPoints())
                 .isEqualTo(10);
         assertThat(queryCredit1()).isEqualTo(10);
         assertThat(pointLedgerCount()).isEqualTo(1);
+
+        assertThat(learningFactPersistenceService.record(7, 8, 9, 100, 100).earnedPoints())
+                .isZero();
 
         jdbcTemplate.execute("DELETE FROM user_course_hour_records");
         jdbcTemplate.execute("DELETE FROM user_course_records");

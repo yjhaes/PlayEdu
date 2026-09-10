@@ -133,9 +133,12 @@ public class LearningFactPersistenceService {
                 userId, courseId, hourId, acceptedDuration, hourDuration);
         Integer hourCount = courseHourService.getCountByCourseId(courseId);
         Integer finishedCount = userCourseHourRecordService.getFinishedHourCount(userId, courseId);
-        boolean completedForTheFirstTime =
+        CourseCompletionTransition completionTransition =
                 userCourseRecordService.storeOrUpdate(userId, courseId, hourCount, finishedCount);
-        int earnedPoints = completedForTheFirstTime ? awardCourseCompletion(userId, courseId) : 0;
+        int earnedPoints =
+                completionTransition.isFirstCompletion()
+                        ? awardCourseCompletion(userId, courseId)
+                        : 0;
 
         long endedAt = System.currentTimeMillis();
         long duration = (long) (acceptedDuration - previousDuration) * 1000;

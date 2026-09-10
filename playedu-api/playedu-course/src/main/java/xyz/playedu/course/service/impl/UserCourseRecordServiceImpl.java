@@ -25,6 +25,7 @@ import xyz.playedu.common.types.paginate.PaginationResult;
 import xyz.playedu.common.types.paginate.UserCourseRecordPaginateFilter;
 import xyz.playedu.course.domain.UserCourseRecord;
 import xyz.playedu.course.mapper.UserCourseRecordMapper;
+import xyz.playedu.course.service.CourseCompletionTransition;
 import xyz.playedu.course.service.UserCourseRecordService;
 
 /**
@@ -43,17 +44,17 @@ public class UserCourseRecordServiceImpl
     }
 
     @Override
-    public boolean storeOrUpdate(
+    public CourseCompletionTransition storeOrUpdate(
             Integer userId, Integer courseId, Integer hourCount, Integer finishedCount) {
         if (hourCount == 0) {
-            return false;
+            return CourseCompletionTransition.NONE;
         }
 
         UserCourseRecord record = find(userId, courseId);
 
         // 已看完
         if (record != null && record.getIsFinished() == 1) {
-            return false;
+            return CourseCompletionTransition.NONE;
         }
 
         boolean isFinished = finishedCount >= hourCount;
@@ -84,7 +85,9 @@ public class UserCourseRecordServiceImpl
 
             updateById(updateRecord);
         }
-        return isFinished;
+        return isFinished
+                ? CourseCompletionTransition.UNFINISHED_TO_FINISHED
+                : CourseCompletionTransition.NONE;
     }
 
     @Override
