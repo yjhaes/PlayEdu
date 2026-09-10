@@ -143,6 +143,16 @@ class PointCodeServiceTest {
     }
 
     @Test
+    void revealsAStoredCodeOnlyThroughTheExplicitRevealOperation() throws Exception {
+        PointCodeCryptoService crypto = new PointCodeCryptoService(KEY);
+        PointCode stored = code(8, PointCodeStatus.AVAILABLE);
+        stored.setCodeCiphertext(crypto.encrypt("SECRET-CODE"));
+        when(codeMapper.selectById(8)).thenReturn(stored);
+
+        assertThat(codeService.reveal(8)).isEqualTo("SECRET-CODE");
+    }
+
+    @Test
     void doesNotExposeCiphertextOrDigestInJsonOrToString() throws Exception {
         PointCode code = new PointCode();
         code.setCodeCiphertext("ciphertext");

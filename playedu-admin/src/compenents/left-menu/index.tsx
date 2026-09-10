@@ -11,7 +11,8 @@ function getItem(
   icon: any,
   children: any,
   type: any,
-  permission: any
+  permission: any,
+  superAdmin = false
 ) {
   return {
     key,
@@ -20,6 +21,7 @@ function getItem(
     label,
     type,
     permission,
+    superAdmin,
   };
 }
 const items = [
@@ -30,6 +32,15 @@ const items = [
     null,
     null,
     null
+  ),
+  getItem(
+    "积分运营",
+    "/points",
+    <i className="iconfont icon-icon-money" />,
+    null,
+    null,
+    null,
+    true
   ),
   getItem(
     "分类管理",
@@ -155,6 +166,9 @@ export const LeftMenu: React.FC = () => {
   const permissions = useSelector(
     (state: any) => state.loginUser.value.permissions
   );
+  const isSuperAdmin = useSelector(
+    (state: any) => state.loginUser.value.isSuperAdmin
+  );
   const [activeMenus, setActiveMenus] = useState<any>([]);
 
   const onClick = (e: any) => {
@@ -162,10 +176,14 @@ export const LeftMenu: React.FC = () => {
   };
 
   useEffect(() => {
-    checkMenuPermissions(items, permissions);
-  }, [items, permissions]);
+    checkMenuPermissions(items, permissions, isSuperAdmin);
+  }, [items, permissions, isSuperAdmin]);
 
-  const checkMenuPermissions = (items: any, permissions: any) => {
+  const checkMenuPermissions = (
+    items: any,
+    permissions: any,
+    isSuperAdmin: boolean
+  ) => {
     let menus: any = [];
     if (permissions.length === 0) {
       setActiveMenus(menus);
@@ -174,6 +192,9 @@ export const LeftMenu: React.FC = () => {
 
     for (let i in items) {
       let menuItem = items[i];
+      if (menuItem.superAdmin && !isSuperAdmin) {
+        continue;
+      }
       // 一级菜单=>没有子菜单&配置了权限
       if (menuItem.children === null) {
         if (

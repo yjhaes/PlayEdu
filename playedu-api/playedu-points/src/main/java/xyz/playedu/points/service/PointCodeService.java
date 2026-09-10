@@ -17,10 +17,16 @@ package xyz.playedu.points.service;
 
 import java.util.List;
 import xyz.playedu.common.exception.NotFoundException;
+import xyz.playedu.common.types.paginate.PaginationResult;
+import xyz.playedu.points.domain.PointCode;
+import xyz.playedu.points.domain.PointCodeStatus;
 import xyz.playedu.points.types.PointCodeImportResult;
 
 /** Base service for encrypted voucher-code inventory. */
 public interface PointCodeService {
+
+    PaginationResult<PointCode> paginate(
+            int page, int size, Integer productId, PointCodeStatus status, String code);
 
     PointCodeImportResult importCodes(Integer productId, String multilineCodes)
             throws NotFoundException;
@@ -33,6 +39,10 @@ public interface PointCodeService {
     boolean hasDeliveredCodes(Integer productId);
 
     void deleteAvailable(Integer codeId) throws NotFoundException;
+
+    PointCode findOrFail(Integer codeId) throws NotFoundException;
+
+    String reveal(Integer codeId) throws NotFoundException;
 
     int deleteAvailableByProductId(Integer productId);
 }

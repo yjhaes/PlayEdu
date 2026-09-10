@@ -10,6 +10,7 @@ type UserInterface = {
 type UserStoreInterface = {
   user: UserInterface | null;
   isLogin: boolean;
+  isSuperAdmin: boolean;
   permissions: string[];
   uploadStatus: boolean;
   uploadCateIds: number[];
@@ -18,6 +19,7 @@ type UserStoreInterface = {
 let defaultValue: UserStoreInterface = {
   user: null,
   isLogin: false,
+  isSuperAdmin: false,
   permissions: [],
   uploadStatus: false,
   uploadCateIds: [],
@@ -33,10 +35,12 @@ const loginUserSlice = createSlice({
       stage.value.user = e.payload.user;
       stage.value.permissions = e.payload.permissions;
       stage.value.isLogin = true;
+      stage.value.isSuperAdmin = e.payload.is_super_admin === true;
     },
     logoutAction(stage) {
       stage.value.user = null;
       stage.value.isLogin = false;
+      stage.value.isSuperAdmin = false;
     },
     uploadAction(stage, e) {
       if (

@@ -16,6 +16,7 @@
 package xyz.playedu.points.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import java.util.List;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Options;
@@ -30,6 +31,58 @@ import xyz.playedu.points.domain.PointCodeStatus;
 
 /** Mapper for encrypted voucher-code inventory. */
 public interface PointCodeMapper extends BaseMapper<PointCode> {
+
+    @Select(
+            """
+            <script>
+            SELECT id, product_id, code_ciphertext, code_digest, status, delivered_at,
+                   created_at, updated_at
+            FROM point_codes
+            <where>
+              <if test="productId != null">
+                AND product_id = #{productId}
+              </if>
+              <if test="status != null">
+                AND status = #{status}
+              </if>
+              <if test="codeDigest != null and codeDigest != ''">
+                AND code_digest = #{codeDigest}
+              </if>
+            </where>
+            ORDER BY id DESC
+            LIMIT #{offset}, #{limit}
+            </script>
+            """)
+    @ResultMap("pointCodeResultMap")
+    List<PointCode> paginate(
+            @Param("productId") Integer productId,
+            @Param("status") PointCodeStatus status,
+            @Param("codeDigest") String codeDigest,
+            @Param("offset") int offset,
+            @Param("limit") int limit);
+
+    @Select(
+            """
+            <script>
+            SELECT COUNT(*)
+            FROM point_codes
+            <where>
+              <if test="productId != null">
+                AND product_id = #{productId}
+              </if>
+              <if test="status != null">
+                AND status = #{status}
+              </if>
+              <if test="codeDigest != null and codeDigest != ''">
+                AND code_digest = #{codeDigest}
+              </if>
+            </where>
+            </script>
+            """)
+    long paginateCount(
+            @Param("productId") Integer productId,
+            @Param("status") PointCodeStatus status,
+            @Param("codeDigest") String codeDigest);
 
     @Select(
             """

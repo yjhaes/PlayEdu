@@ -23,6 +23,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -71,6 +72,23 @@ class PointProductServiceTest {
         assertThatThrownBy(() -> productService.create("商品", 0))
                 .isInstanceOf(ServiceException.class)
                 .hasMessage("兑换商品积分价格必须为正整数");
+    }
+
+    @Test
+    void paginatesProductsWithExactAvailableAndDeliveredCounts() {
+        PointProduct product = product(7, "商品", 50, PointProductStatus.ON_SALE);
+        when(productMapper.paginate("商品", PointProductStatus.ON_SALE, 10, 10))
+                .thenReturn(List.of(product));
+        when(productMapper.paginateCount("商品", PointProductStatus.ON_SALE)).thenReturn(1L);
+        when(codeMapper.countAvailableByProductId(7)).thenReturn(3L);
+        when(codeMapper.countDeliveredByProductId(7)).thenReturn(4L);
+
+        var result = productService.paginate(2, 10, "商品", PointProductStatus.ON_SALE);
+
+        assertThat(result.getData()).containsExactly(product);
+        assertThat(result.getTotal()).isEqualTo(1L);
+        assertThat(product.getAvailableCount()).isEqualTo(3L);
+        assertThat(product.getDeliveredCount()).isEqualTo(4L);
     }
 
     @Test

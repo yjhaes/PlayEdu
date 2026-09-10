@@ -54,7 +54,9 @@ public class AdminLogAspect {
 
     /** 排除敏感属性字段 */
     public static final String EXCLUDE_PROPERTIES =
-            "password,oldPassword,newPassword,confirmPassword,token";
+            "password,oldPassword,newPassword,confirmPassword,token,codes,multilineCodes,"
+                    + "multiline_codes,code,codeText,codeCiphertext,codeDigest,code_ciphertext,"
+                    + "code_digest";
 
     /** Controller层切点 注解拦截 */
     @Pointcut("@annotation(xyz.playedu.common.annotation.Log)")

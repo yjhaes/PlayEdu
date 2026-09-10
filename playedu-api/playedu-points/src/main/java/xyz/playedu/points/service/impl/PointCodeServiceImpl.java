@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.playedu.common.exception.NotFoundException;
 import xyz.playedu.common.exception.ServiceException;
+import xyz.playedu.common.types.paginate.PaginationResult;
 import xyz.playedu.points.crypto.PointCodeCryptoService;
 import xyz.playedu.points.domain.PointCode;
 import xyz.playedu.points.domain.PointCodeStatus;
@@ -51,6 +52,25 @@ public class PointCodeServiceImpl implements PointCodeService {
         this.codeMapper = codeMapper;
         this.productService = productService;
         this.cryptoService = cryptoService;
+    }
+
+    @Override
+    public PaginationResult<PointCode> paginate(
+            int page, int size, Integer productId, PointCodeStatus status, String code) {
+        int pageSize = normalizedPageSize(size);
+        int offset = pageOffset(page, pageSize);
+        String codeDigest =
+                code == null || code.isBlank() ? null : cryptoService.digest(code);
+        List<PointCode> codes =
+                codeMapper.paginate(productId, status, codeDigest, offset, pageSize);
+        if (codes == null) {
+            codes = List.of();
+        }
+
+        PaginationResult<PointCode> result = new PaginationResult<>();
+        result.setData(codes);
+        result.setTotal(codeMapper.paginateCount(productId, status, codeDigest));
+        return result;
     }
 
     @Override
@@ -149,6 +169,20 @@ public class PointCodeServiceImpl implements PointCodeService {
     }
 
     @Override
+    public PointCode findOrFail(Integer codeId) throws NotFoundException {
+        PointCode code = codeMapper.selectById(codeId);
+        if (code == null) {
+            throw new NotFoundException("兑换码不存在");
+        }
+        return code;
+    }
+
+    @Override
+    public String reveal(Integer codeId) throws NotFoundException {
+        return cryptoService.decrypt(findOrFail(codeId).getCodeCiphertext());
+    }
+
+    @Override
     @Transactional
     public int deleteAvailableByProductId(Integer productId) {
         return codeMapper.deleteAvailableByProductId(productId);
@@ -156,5 +190,20 @@ public class PointCodeServiceImpl implements PointCodeService {
 
     private PointCodeImportResult emptyImportResult() {
         return new PointCodeImportResult(0, 0, List.of());
+    }
+
+    private int normalizedPageSize(int size) {
+        if (size <= 0) {
+            return 10;
+        }
+        return Math.min(size, 100);
+    }
+
+    private int pageOffset(int page, int pageSize) {
+        if (page <= 1) {
+            return 0;
+        }
+        long offset = (long) (page - 1) * pageSize;
+        return offset > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) offset;
     }
 }

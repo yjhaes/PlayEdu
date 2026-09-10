@@ -16,6 +16,7 @@
 package xyz.playedu.points.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import java.util.List;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Result;
 import org.apache.ibatis.annotations.ResultMap;
@@ -25,6 +26,73 @@ import xyz.playedu.points.domain.PointRedemption;
 
 /** Mapper for completed points redemptions. */
 public interface PointRedemptionMapper extends BaseMapper<PointRedemption> {
+
+    @Select(
+            """
+            <script>
+            SELECT id, user_id, product_id, code_id, request_key, points_cost, created_at
+            FROM point_redemptions
+            <where>
+              <if test="userId != null">
+                AND user_id = #{userId}
+              </if>
+              <if test="productId != null">
+                AND product_id = #{productId}
+              </if>
+              <if test="codeId != null">
+                AND code_id = #{codeId}
+              </if>
+              <if test="startTime != null and startTime != ''">
+                AND created_at &gt;= #{startTime}
+              </if>
+              <if test="endTime != null and endTime != ''">
+                AND created_at &lt;= #{endTime}
+              </if>
+            </where>
+            ORDER BY created_at DESC, id DESC
+            LIMIT #{offset}, #{limit}
+            </script>
+            """)
+    @ResultMap("pointRedemptionResultMap")
+    List<PointRedemption> paginate(
+            @Param("userId") Integer userId,
+            @Param("productId") Integer productId,
+            @Param("codeId") Integer codeId,
+            @Param("startTime") String startTime,
+            @Param("endTime") String endTime,
+            @Param("offset") int offset,
+            @Param("limit") int limit);
+
+    @Select(
+            """
+            <script>
+            SELECT COUNT(*)
+            FROM point_redemptions
+            <where>
+              <if test="userId != null">
+                AND user_id = #{userId}
+              </if>
+              <if test="productId != null">
+                AND product_id = #{productId}
+              </if>
+              <if test="codeId != null">
+                AND code_id = #{codeId}
+              </if>
+              <if test="startTime != null and startTime != ''">
+                AND created_at &gt;= #{startTime}
+              </if>
+              <if test="endTime != null and endTime != ''">
+                AND created_at &lt;= #{endTime}
+              </if>
+            </where>
+            </script>
+            """)
+    long paginateCount(
+            @Param("userId") Integer userId,
+            @Param("productId") Integer productId,
+            @Param("codeId") Integer codeId,
+            @Param("startTime") String startTime,
+            @Param("endTime") String endTime);
 
     @Select(
             """

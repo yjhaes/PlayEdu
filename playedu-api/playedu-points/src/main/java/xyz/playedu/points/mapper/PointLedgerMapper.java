@@ -16,6 +16,7 @@
 package xyz.playedu.points.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import java.util.List;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
@@ -28,6 +29,84 @@ import xyz.playedu.points.domain.PointLedgerType;
 
 /** Mapper for immutable points ledger entries. */
 public interface PointLedgerMapper extends BaseMapper<PointLedger> {
+
+    @Select(
+            """
+            <script>
+            SELECT id, user_id, delta, balance_after, type, source_key, reason,
+                   operator_admin_id, created_at
+            FROM point_ledgers
+            <where>
+              <if test="userId != null">
+                AND user_id = #{userId}
+              </if>
+              <if test="type != null">
+                AND type = #{type}
+              </if>
+              <if test="operatorAdminId != null">
+                AND operator_admin_id = #{operatorAdminId}
+              </if>
+              <if test="keyword != null and keyword != ''">
+                AND (source_key LIKE CONCAT('%', #{keyword}, '%')
+                     OR reason LIKE CONCAT('%', #{keyword}, '%'))
+              </if>
+              <if test="startTime != null and startTime != ''">
+                AND created_at &gt;= #{startTime}
+              </if>
+              <if test="endTime != null and endTime != ''">
+                AND created_at &lt;= #{endTime}
+              </if>
+            </where>
+            ORDER BY created_at DESC, id DESC
+            LIMIT #{offset}, #{limit}
+            </script>
+            """)
+    @ResultMap("pointLedgerResultMap")
+    List<PointLedger> paginate(
+            @Param("userId") Integer userId,
+            @Param("type") PointLedgerType type,
+            @Param("operatorAdminId") Integer operatorAdminId,
+            @Param("keyword") String keyword,
+            @Param("startTime") String startTime,
+            @Param("endTime") String endTime,
+            @Param("offset") int offset,
+            @Param("limit") int limit);
+
+    @Select(
+            """
+            <script>
+            SELECT COUNT(*)
+            FROM point_ledgers
+            <where>
+              <if test="userId != null">
+                AND user_id = #{userId}
+              </if>
+              <if test="type != null">
+                AND type = #{type}
+              </if>
+              <if test="operatorAdminId != null">
+                AND operator_admin_id = #{operatorAdminId}
+              </if>
+              <if test="keyword != null and keyword != ''">
+                AND (source_key LIKE CONCAT('%', #{keyword}, '%')
+                     OR reason LIKE CONCAT('%', #{keyword}, '%'))
+              </if>
+              <if test="startTime != null and startTime != ''">
+                AND created_at &gt;= #{startTime}
+              </if>
+              <if test="endTime != null and endTime != ''">
+                AND created_at &lt;= #{endTime}
+              </if>
+            </where>
+            </script>
+            """)
+    long paginateCount(
+            @Param("userId") Integer userId,
+            @Param("type") PointLedgerType type,
+            @Param("operatorAdminId") Integer operatorAdminId,
+            @Param("keyword") String keyword,
+            @Param("startTime") String startTime,
+            @Param("endTime") String endTime);
 
     @Select(
             """

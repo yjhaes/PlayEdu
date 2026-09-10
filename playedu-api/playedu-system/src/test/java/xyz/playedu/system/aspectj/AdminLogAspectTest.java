@@ -13,19 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.playedu.points.service;
+package xyz.playedu.system.aspectj;
 
-/** Stable natural keys shared by online and historical points producers. */
-public final class PointSourceKeys {
+import static org.assertj.core.api.Assertions.assertThat;
 
-    private PointSourceKeys() {}
+import org.junit.jupiter.api.Test;
 
-    public static String courseCompletion(Integer userId, Integer courseId) {
-        return "course-completion:" + userId + ":" + courseId;
-    }
+class AdminLogAspectTest {
 
-    public static String manualAdjustment(
-            Integer userId, Integer operatorAdminId, String requestKey) {
-        return "manual-adjustment:" + userId + ":" + operatorAdminId + ":" + requestKey;
+    @Test
+    void masksVoucherCodeFieldsBeforeTheyReachTheOperationLog() {
+        String params =
+                "{\"codes\":\"SECRET-CODE\",\"multiline_codes\":\"SECRET-CODE-2\","
+                        + "\"reason\":\"人工补发\"}";
+
+        String masked = new AdminLogAspect().excludeProperties(params).toString();
+
+        assertThat(masked).doesNotContain("SECRET-CODE", "SECRET-CODE-2");
+        assertThat(masked).contains("人工补发");
     }
 }

@@ -17,9 +17,11 @@ package xyz.playedu.points.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.util.Date;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.playedu.common.exception.ServiceException;
+import xyz.playedu.common.types.paginate.PaginationResult;
 import xyz.playedu.points.domain.PointCode;
 import xyz.playedu.points.domain.PointLedgerType;
 import xyz.playedu.points.domain.PointProduct;
@@ -70,6 +72,28 @@ public class PointRedemptionServiceImpl extends ServiceImpl<PointRedemptionMappe
             return;
         }
         remove(query().getWrapper().eq("user_id", userId));
+    }
+
+    @Override
+    public PaginationResult<PointRedemption> paginate(
+            int page,
+            int size,
+            Integer userId,
+            Integer productId,
+            Integer codeId,
+            String startTime,
+            String endTime) {
+        int pageSize = normalizedPageSize(size);
+        int offset = pageOffset(page, pageSize);
+        List<PointRedemption> redemptions =
+                redemptionMapper.paginate(
+                        userId, productId, codeId, startTime, endTime, offset, pageSize);
+
+        PaginationResult<PointRedemption> result = new PaginationResult<>();
+        result.setData(redemptions == null ? List.of() : redemptions);
+        result.setTotal(
+                redemptionMapper.paginateCount(userId, productId, codeId, startTime, endTime));
+        return result;
     }
 
     @Override
@@ -172,5 +196,20 @@ public class PointRedemptionServiceImpl extends ServiceImpl<PointRedemptionMappe
 
     private String sourceKey(Integer userId, String requestKey) {
         return "redemption:" + userId + ":" + requestKey;
+    }
+
+    private int normalizedPageSize(int size) {
+        if (size <= 0) {
+            return 10;
+        }
+        return Math.min(size, 100);
+    }
+
+    private int pageOffset(int page, int pageSize) {
+        if (page <= 1) {
+            return 0;
+        }
+        long offset = (long) (page - 1) * pageSize;
+        return offset > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) offset;
     }
 }

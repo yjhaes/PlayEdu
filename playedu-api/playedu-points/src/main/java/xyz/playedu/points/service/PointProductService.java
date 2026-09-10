@@ -16,11 +16,15 @@
 package xyz.playedu.points.service;
 
 import xyz.playedu.common.exception.NotFoundException;
+import xyz.playedu.common.types.paginate.PaginationResult;
 import xyz.playedu.points.domain.PointProduct;
 import xyz.playedu.points.domain.PointProductStatus;
 
 /** Base service for redeemable points products. */
 public interface PointProductService {
+
+    PaginationResult<PointProduct> paginate(
+            int page, int size, String name, PointProductStatus status);
 
     PointProduct findOrFail(Integer id) throws NotFoundException;
 

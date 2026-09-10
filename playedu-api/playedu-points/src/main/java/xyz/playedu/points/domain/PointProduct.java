@@ -16,6 +16,7 @@
 package xyz.playedu.points.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -37,6 +38,14 @@ public class PointProduct implements Serializable {
     private Integer pointsPrice;
 
     private PointProductStatus status;
+
+    @TableField(exist = false)
+    @JsonProperty("available_count")
+    private Long availableCount;
+
+    @TableField(exist = false)
+    @JsonProperty("delivered_count")
+    private Long deliveredCount;
 
     @JsonProperty("created_at")
     private Date createdAt;

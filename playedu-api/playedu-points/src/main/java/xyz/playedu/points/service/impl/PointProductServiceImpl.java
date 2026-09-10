@@ -16,12 +16,14 @@
 package xyz.playedu.points.service.impl;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.playedu.common.exception.NotFoundException;
 import xyz.playedu.common.exception.ServiceException;
+import xyz.playedu.common.types.paginate.PaginationResult;
 import xyz.playedu.points.domain.PointProduct;
 import xyz.playedu.points.domain.PointProductStatus;
 import xyz.playedu.points.mapper.PointCodeMapper;
@@ -39,6 +41,26 @@ public class PointProductServiceImpl implements PointProductService {
     public PointProductServiceImpl(PointProductMapper productMapper, PointCodeMapper codeMapper) {
         this.productMapper = productMapper;
         this.codeMapper = codeMapper;
+    }
+
+    @Override
+    public PaginationResult<PointProduct> paginate(
+            int page, int size, String name, PointProductStatus status) {
+        int pageSize = normalizedPageSize(size);
+        int offset = pageOffset(page, pageSize);
+        List<PointProduct> products = productMapper.paginate(name, status, offset, pageSize);
+        if (products == null) {
+            products = List.of();
+        }
+        for (PointProduct product : products) {
+            product.setAvailableCount(codeMapper.countAvailableByProductId(product.getId()));
+            product.setDeliveredCount(codeMapper.countDeliveredByProductId(product.getId()));
+        }
+
+        PaginationResult<PointProduct> result = new PaginationResult<>();
+        result.setData(products);
+        result.setTotal(productMapper.paginateCount(name, status));
+        return result;
     }
 
     @Override
@@ -170,5 +192,20 @@ public class PointProductServiceImpl implements PointProductService {
         if (pointsPrice == null || pointsPrice <= 0) {
             throw new ServiceException("兑换商品积分价格必须为正整数");
         }
+    }
+
+    private int normalizedPageSize(int size) {
+        if (size <= 0) {
+            return 10;
+        }
+        return Math.min(size, 100);
+    }
+
+    private int pageOffset(int page, int pageSize) {
+        if (page <= 1) {
+            return 0;
+        }
+        long offset = (long) (page - 1) * pageSize;
+        return offset > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) offset;
     }
 }

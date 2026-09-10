@@ -50,6 +50,10 @@ const ErrorPage = lazy(() => import("../pages/error"));
 const LicensingPage = lazy(() => import("../pages/licensing/index"));
 
 import PrivateRoute from "../compenents/private-route";
+import SuperAdminRoute from "../compenents/super-admin-route";
+
+//积分运营
+const PointsAdminPage = lazy(() => import("../pages/points"));
 
 // const LoginPage = lazy(() => import("../pages/login"));
 
@@ -158,6 +162,10 @@ const routes: RouteObject[] = [
           {
             path: "/system/adminlog",
             element: <PrivateRoute Component={<SystemLogPage />} />,
+          },
+          {
+            path: "/points",
+            element: <SuperAdminRoute Component={<PointsAdminPage />} />,
           },
           {
             path: "/department",

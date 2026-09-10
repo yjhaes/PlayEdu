@@ -108,6 +108,7 @@ public class LoginController {
         HashMap<String, Object> data = new HashMap<>();
         data.put("user", user);
         data.put("permissions", permissions);
+        data.put("is_super_admin", backendBus.isSuperAdmin());
 
         return JsonResponse.data(data);
     }

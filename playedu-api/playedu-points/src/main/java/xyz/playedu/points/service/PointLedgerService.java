@@ -16,11 +16,23 @@
 package xyz.playedu.points.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import xyz.playedu.common.types.paginate.PaginationResult;
 import xyz.playedu.points.domain.PointLedger;
+import xyz.playedu.points.domain.PointLedgerType;
 
 /** Base service for immutable points ledger entries. */
 public interface PointLedgerService extends IService<PointLedger> {
 
     /** Removes all ledger entries owned by a learner as part of physical deletion. */
     void removeByUserId(Integer userId);
+
+    PaginationResult<PointLedger> paginate(
+            int page,
+            int size,
+            Integer userId,
+            PointLedgerType type,
+            Integer operatorAdminId,
+            String keyword,
+            String startTime,
+            String endTime);
 }

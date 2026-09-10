@@ -16,6 +16,7 @@
 package xyz.playedu.points.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import xyz.playedu.common.types.paginate.PaginationResult;
 import xyz.playedu.points.domain.PointRedemption;
 
 /** Base service for completed points redemptions. */
@@ -23,6 +24,15 @@ public interface PointRedemptionService extends IService<PointRedemption> {
 
     /** Removes all redemption records owned by a learner as part of physical deletion. */
     void removeByUserId(Integer userId);
+
+    PaginationResult<PointRedemption> paginate(
+            int page,
+            int size,
+            Integer userId,
+            Integer productId,
+            Integer codeId,
+            String startTime,
+            String endTime);
 
     /** Redeems one currently available code for a learner, exactly once per request key. */
     PointRedemption redeem(Integer userId, Integer productId, String requestKey);
