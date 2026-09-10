@@ -24,4 +24,13 @@ import xyz.playedu.points.service.PointLedgerService;
 /** Default persistence service for immutable points ledger entries. */
 @Service
 public class PointLedgerServiceImpl extends ServiceImpl<PointLedgerMapper, PointLedger>
-        implements PointLedgerService {}
+        implements PointLedgerService {
+
+    @Override
+    public void removeByUserId(Integer userId) {
+        if (userId == null) {
+            return;
+        }
+        remove(query().getWrapper().eq("user_id", userId));
+    }
+}

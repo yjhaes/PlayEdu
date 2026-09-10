@@ -21,6 +21,9 @@ import xyz.playedu.points.domain.PointRedemption;
 /** Base service for completed points redemptions. */
 public interface PointRedemptionService extends IService<PointRedemption> {
 
+    /** Removes all redemption records owned by a learner as part of physical deletion. */
+    void removeByUserId(Integer userId);
+
     /** Redeems one currently available code for a learner, exactly once per request key. */
     PointRedemption redeem(Integer userId, Integer productId, String requestKey);
 }

@@ -29,9 +29,9 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import xyz.playedu.api.event.UserCourseHourRecordDestroyEvent;
 import xyz.playedu.api.event.UserCourseRecordDestroyEvent;
-import xyz.playedu.api.event.UserDestroyEvent;
 import xyz.playedu.api.request.backend.UserImportRequest;
 import xyz.playedu.api.request.backend.UserRequest;
+import xyz.playedu.api.service.UserDeletionService;
 import xyz.playedu.common.annotation.BackendPermission;
 import xyz.playedu.common.annotation.Log;
 import xyz.playedu.common.constant.*;
@@ -68,8 +68,6 @@ public class UserController {
 
     @Autowired private DepartmentService departmentService;
 
-    @Autowired private ApplicationContext context;
-
     @Autowired private UserCourseHourRecordService userCourseHourRecordService;
 
     @Autowired private UserCourseRecordService userCourseRecordService;
@@ -83,6 +81,8 @@ public class UserController {
     @Autowired private ApplicationContext ctx;
 
     @Autowired private ResourceService resourceService;
+
+    @Autowired private UserDeletionService userDeletionService;
 
     @BackendPermission(slug = BPermissionConstant.USER_INDEX)
     @GetMapping("/index")
@@ -256,9 +256,7 @@ public class UserController {
     @DeleteMapping("/{id}")
     @Log(title = "学员-删除", businessType = BusinessTypeConstant.DELETE)
     public JsonResponse destroy(@PathVariable(name = "id") Integer id) throws NotFoundException {
-        User user = userService.findOrFail(id);
-        userService.removeById(user.getId());
-        context.publishEvent(new UserDestroyEvent(this, user.getId()));
+        userDeletionService.destroy(id);
         return JsonResponse.success();
     }
 

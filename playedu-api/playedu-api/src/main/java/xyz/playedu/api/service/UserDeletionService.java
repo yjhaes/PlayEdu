@@ -13,28 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.playedu.api.event;
+package xyz.playedu.api.service;
 
-import java.util.Date;
-import lombok.Getter;
-import lombok.Setter;
-import org.springframework.context.ApplicationEvent;
+import xyz.playedu.common.exception.NotFoundException;
 
-/**
- * @Author 杭州白书科技有限公司
- *
- * @create 2023/2/23 13:51
- */
-@Getter
-@Setter
-public class UserDestroyEvent extends ApplicationEvent {
+/** Transactional application boundary for physically deleting a learner. */
+public interface UserDeletionService {
 
-    private Integer userId;
-    private Date createdAt;
-
-    public UserDestroyEvent(Object source, Integer userId) {
-        super(source);
-        this.userId = userId;
-        this.createdAt = new Date();
-    }
+    void destroy(Integer userId) throws NotFoundException;
 }

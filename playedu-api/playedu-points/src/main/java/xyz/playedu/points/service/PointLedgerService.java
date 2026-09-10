@@ -19,4 +19,8 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import xyz.playedu.points.domain.PointLedger;
 
 /** Base service for immutable points ledger entries. */
-public interface PointLedgerService extends IService<PointLedger> {}
+public interface PointLedgerService extends IService<PointLedger> {
+
+    /** Removes all ledger entries owned by a learner as part of physical deletion. */
+    void removeByUserId(Integer userId);
+}

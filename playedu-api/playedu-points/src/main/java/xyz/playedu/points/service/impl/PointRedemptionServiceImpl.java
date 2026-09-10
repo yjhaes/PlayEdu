@@ -65,6 +65,14 @@ public class PointRedemptionServiceImpl extends ServiceImpl<PointRedemptionMappe
     }
 
     @Override
+    public void removeByUserId(Integer userId) {
+        if (userId == null) {
+            return;
+        }
+        remove(query().getWrapper().eq("user_id", userId));
+    }
+
+    @Override
     @Transactional
     public PointRedemption redeem(Integer userId, Integer productId, String requestKey) {
         validateRequest(userId, productId, requestKey);
