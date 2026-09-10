@@ -86,6 +86,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
+    public void ensureExistsForUpdate(Integer id) throws NotFoundException {
+        if (getBaseMapper().lockIdForUpdate(id) == null) {
+            throw new NotFoundException("学员不存在");
+        }
+    }
+
+    @Override
     @Transactional
     public User createWithDepIds(
             String email,

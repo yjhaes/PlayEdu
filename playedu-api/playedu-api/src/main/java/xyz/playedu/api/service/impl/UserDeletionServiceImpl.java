@@ -70,7 +70,7 @@ public class UserDeletionServiceImpl implements UserDeletionService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void destroy(Integer userId) throws NotFoundException {
-        userService.findOrFail(userId);
+        userService.ensureExistsForUpdate(userId);
 
         pointRedemptionService.removeByUserId(userId);
         pointLedgerService.removeByUserId(userId);

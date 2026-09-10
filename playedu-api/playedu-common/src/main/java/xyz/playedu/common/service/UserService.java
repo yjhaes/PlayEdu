@@ -40,6 +40,9 @@ public interface UserService extends IService<User> {
 
     User findOrFail(Integer id) throws NotFoundException;
 
+    /** Locks an existing learner row for the current transaction. */
+    void ensureExistsForUpdate(Integer id) throws NotFoundException;
+
     User find(Integer id);
 
     User find(String email);

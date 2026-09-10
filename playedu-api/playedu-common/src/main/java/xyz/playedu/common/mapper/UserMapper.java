@@ -18,6 +18,8 @@ package xyz.playedu.common.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 import xyz.playedu.common.domain.User;
 import xyz.playedu.common.types.paginate.UserPaginateFilter;
 
@@ -28,6 +30,9 @@ import xyz.playedu.common.types.paginate.UserPaginateFilter;
  */
 @Mapper
 public interface UserMapper extends BaseMapper<User> {
+
+    @Select("SELECT id FROM users WHERE id = #{id} FOR UPDATE")
+    Integer lockIdForUpdate(@Param("id") Integer id);
 
     List<User> paginate(UserPaginateFilter filter);
 

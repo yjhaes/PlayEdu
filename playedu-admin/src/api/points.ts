@@ -29,7 +29,7 @@ export function updateProduct(id: number, name: string, pointsPrice: number) {
 }
 
 export function setProductStatus(id: number, status: "ON_SALE" | "OFF_SALE") {
-  return client.put(`/backend/v1/points/products/${id}/status`, { status });
+  return client.put(`/backend/v1/points/products/${id}/status?status=${status}`, {});
 }
 
 export function deleteProduct(id: number) {
