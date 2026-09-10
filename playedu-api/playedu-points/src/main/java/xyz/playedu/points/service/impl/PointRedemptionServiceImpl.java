@@ -17,7 +17,6 @@ package xyz.playedu.points.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import java.util.Date;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.playedu.common.exception.ServiceException;
@@ -48,24 +47,20 @@ public class PointRedemptionServiceImpl extends ServiceImpl<PointRedemptionMappe
     private final PointCodeMapper codeMapper;
     private final PointBalanceMapper balanceMapper;
     private final PointBalanceService balanceService;
-    private PointsFeatureGate pointsFeatureGate;
+    private final PointsFeatureGate pointsFeatureGate;
 
     public PointRedemptionServiceImpl(
             PointRedemptionMapper redemptionMapper,
             PointProductMapper productMapper,
             PointCodeMapper codeMapper,
             PointBalanceMapper balanceMapper,
-            PointBalanceService balanceService) {
+            PointBalanceService balanceService,
+            PointsFeatureGate pointsFeatureGate) {
         this.redemptionMapper = redemptionMapper;
         this.productMapper = productMapper;
         this.codeMapper = codeMapper;
         this.balanceMapper = balanceMapper;
         this.balanceService = balanceService;
-    }
-
-    /** The full application supplies the gate; narrow service tests may omit it. */
-    @Autowired(required = false)
-    public void setPointsFeatureGate(PointsFeatureGate pointsFeatureGate) {
         this.pointsFeatureGate = pointsFeatureGate;
     }
 
@@ -73,9 +68,7 @@ public class PointRedemptionServiceImpl extends ServiceImpl<PointRedemptionMappe
     @Transactional
     public PointRedemption redeem(Integer userId, Integer productId, String requestKey) {
         validateRequest(userId, productId, requestKey);
-        if (pointsFeatureGate != null) {
-            pointsFeatureGate.requireOpen();
-        }
+        pointsFeatureGate.requireOpen();
 
         PointRedemption existing = redemptionMapper.findByUserIdAndRequestKey(userId, requestKey);
         if (existing != null) {

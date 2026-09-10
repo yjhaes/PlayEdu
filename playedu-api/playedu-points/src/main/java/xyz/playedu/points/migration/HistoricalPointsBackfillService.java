@@ -23,8 +23,4 @@ public interface HistoricalPointsBackfillService {
 
     /** Resets legacy balances and backfills current completed course records atomically. */
     HistoricalPointsBackfillReport resetAndBackfill(boolean backupConfirmed);
-
-    default HistoricalPointsBackfillReport migrate(boolean backupConfirmed) {
-        return resetAndBackfill(backupConfirmed);
-    }
 }

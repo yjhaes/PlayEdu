@@ -16,7 +16,6 @@
 package xyz.playedu.points.migration;
 
 import org.springframework.stereotype.Service;
-import xyz.playedu.common.exception.ServiceException;
 
 /** Default gate used by learner-facing points operations. */
 @Service
@@ -35,8 +34,6 @@ public class PointsFeatureGateImpl implements PointsFeatureGate {
 
     @Override
     public void requireOpen() {
-        if (!isOpen()) {
-            throw new ServiceException("积分历史迁移尚未完成，积分功能暂未开放");
-        }
+        migrationStateService.requireHistoricalBackfillComplete();
     }
 }

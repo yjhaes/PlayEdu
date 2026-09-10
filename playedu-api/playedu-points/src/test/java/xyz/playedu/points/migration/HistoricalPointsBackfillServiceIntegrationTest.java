@@ -40,6 +40,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import xyz.playedu.points.domain.PointLedgerType;
 import xyz.playedu.points.service.PointBalanceChange;
 import xyz.playedu.points.service.PointBalanceService;
+import xyz.playedu.points.service.PointSourceKeys;
 import xyz.playedu.points.service.impl.PointBalanceServiceImpl;
 
 @SpringBootTest(classes = HistoricalPointsBackfillServiceIntegrationTest.TestApplication.class)
@@ -281,8 +282,7 @@ class HistoricalPointsBackfillServiceIntegrationTest {
                                                 1,
                                                 10,
                                                 PointLedgerType.COURSE_COMPLETION,
-                                                HistoricalPointsBackfillServiceImpl
-                                                        .courseCompletionSourceKey(1, 101),
+                                                PointSourceKeys.courseCompletion(1, 101),
                                                 null,
                                                 null,
                                                 false));

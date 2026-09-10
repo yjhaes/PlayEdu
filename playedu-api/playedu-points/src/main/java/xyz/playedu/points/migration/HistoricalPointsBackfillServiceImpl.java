@@ -148,9 +148,5 @@ public class HistoricalPointsBackfillServiceImpl implements HistoricalPointsBack
                                 resultSet.getInt("user_id"), resultSet.getInt("course_id")));
     }
 
-    public static String courseCompletionSourceKey(Integer userId, Integer courseId) {
-        return PointSourceKeys.courseCompletion(userId, courseId);
-    }
-
     private record HistoricalCourseCompletion(Integer userId, Integer courseId) {}
 }
