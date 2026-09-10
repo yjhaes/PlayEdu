@@ -949,6 +949,50 @@ public class MigrationCheck implements CommandLineRunner {
                                                     """);
                                 }
                             });
+                    add(
+                            new HashMap<>() {
+                                {
+                                    put("table", "point_migration_state");
+                                    put("name", "20260910_00_00_05_point_migration_state");
+                                    put(
+                                            "sql",
+                                            """
+                                                    CREATE TABLE `point_migration_state` (
+                                                      `migration_key` varchar(191) CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT '积分迁移键',
+                                                      `completed_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '完成时间',
+                                                      `legacy_credit1_non_zero_user_count` bigint unsigned NOT NULL COMMENT '旧学分非零学员数',
+                                                      `legacy_credit1_total` bigint NOT NULL COMMENT '旧学分总额',
+                                                      `historical_learner_count` bigint unsigned NOT NULL COMMENT '历史完成学员数',
+                                                      `historical_course_completion_count` bigint unsigned NOT NULL COMMENT '历史完成课程数',
+                                                      `expected_reward_total` bigint unsigned NOT NULL COMMENT '预计补发总额',
+                                                      PRIMARY KEY (`migration_key`)
+                                                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='积分迁移状态表';
+                                                    """);
+                                }
+                            });
+                    add(
+                            new HashMap<>() {
+                                {
+                                    put("table", "point_historical_reward_summaries");
+                                    put(
+                                            "name",
+                                            "20260910_00_00_06_point_historical_reward_summaries");
+                                    put(
+                                            "sql",
+                                            """
+                                                    CREATE TABLE `point_historical_reward_summaries` (
+                                                      `user_id` int unsigned NOT NULL COMMENT '学员ID',
+                                                      `completion_count` bigint unsigned NOT NULL COMMENT '历史完成课程数',
+                                                      `points_awarded` bigint unsigned NOT NULL COMMENT '历史补发积分',
+                                                      `acknowledged_at` datetime DEFAULT NULL COMMENT '汇总提示已读时间',
+                                                      `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                                      PRIMARY KEY (`user_id`),
+                                                      CONSTRAINT `chk_point_historical_summary_completion_count_positive` CHECK (`completion_count` > 0),
+                                                      CONSTRAINT `chk_point_historical_summary_points_awarded_positive` CHECK (`points_awarded` > 0)
+                                                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='历史积分补发汇总表';
+                                                    """);
+                                }
+                            });
                 }
             };
 

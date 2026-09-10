@@ -28,6 +28,7 @@ import xyz.playedu.points.domain.PointLedgerType;
 import xyz.playedu.points.service.PointBalanceChange;
 import xyz.playedu.points.service.PointBalanceChangeResult;
 import xyz.playedu.points.service.PointBalanceService;
+import xyz.playedu.points.service.PointSourceKeys;
 
 /** Persists all MySQL facts created by one accepted course-hour progress interval. */
 @Service
@@ -161,7 +162,7 @@ public class LearningFactPersistenceService {
                                 userId,
                                 COURSE_COMPLETION_REWARD_POINTS,
                                 PointLedgerType.COURSE_COMPLETION,
-                                "course-completion:" + userId + ":" + courseId,
+                                PointSourceKeys.courseCompletion(userId, courseId),
                                 null,
                                 null,
                                 false));
