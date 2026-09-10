@@ -18,10 +18,12 @@ package xyz.playedu.points.domain;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serializable;
 import java.util.Date;
 import lombok.Data;
+import lombok.ToString;
 
 /** An encrypted voucher code owned by a points product. */
 @Data
@@ -34,9 +36,13 @@ public class PointCode implements Serializable {
     @JsonProperty("product_id")
     private Integer productId;
 
+    @JsonIgnore
+    @ToString.Exclude
     @JsonProperty("code_ciphertext")
     private String codeCiphertext;
 
+    @JsonIgnore
+    @ToString.Exclude
     @JsonProperty("code_digest")
     private String codeDigest;
 

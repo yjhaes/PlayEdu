@@ -15,8 +15,24 @@
  */
 package xyz.playedu.points.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
-import xyz.playedu.points.domain.PointCode;
+import java.util.List;
+import xyz.playedu.common.exception.NotFoundException;
+import xyz.playedu.points.types.PointCodeImportResult;
 
 /** Base service for encrypted voucher-code inventory. */
-public interface PointCodeService extends IService<PointCode> {}
+public interface PointCodeService {
+
+    PointCodeImportResult importCodes(Integer productId, String multilineCodes)
+            throws NotFoundException;
+
+    PointCodeImportResult importCodes(Integer productId, List<String> codeLines)
+            throws NotFoundException;
+
+    long availableCount(Integer productId);
+
+    boolean hasDeliveredCodes(Integer productId);
+
+    void deleteAvailable(Integer codeId) throws NotFoundException;
+
+    int deleteAvailableByProductId(Integer productId);
+}

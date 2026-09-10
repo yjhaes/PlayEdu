@@ -15,8 +15,30 @@
  */
 package xyz.playedu.points.service;
 
-import com.baomidou.mybatisplus.extension.service.IService;
+import xyz.playedu.common.exception.NotFoundException;
 import xyz.playedu.points.domain.PointProduct;
+import xyz.playedu.points.domain.PointProductStatus;
 
 /** Base service for redeemable points products. */
-public interface PointProductService extends IService<PointProduct> {}
+public interface PointProductService {
+
+    PointProduct findOrFail(Integer id) throws NotFoundException;
+
+    PointProduct findForUpdate(Integer id) throws NotFoundException;
+
+    PointProduct create(String name, Integer pointsPrice);
+
+    PointProduct create(String name, Integer pointsPrice, PointProductStatus status);
+
+    PointProduct update(Integer id, String name, Integer pointsPrice) throws NotFoundException;
+
+    PointProduct changeStatus(Integer id, PointProductStatus status) throws NotFoundException;
+
+    PointProduct offSale(Integer id) throws NotFoundException;
+
+    long availableCount(Integer id);
+
+    boolean hasDeliveredCodes(Integer id);
+
+    void deleteById(Integer id) throws NotFoundException;
+}

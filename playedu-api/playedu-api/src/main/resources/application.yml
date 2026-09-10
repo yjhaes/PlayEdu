@@ -64,6 +64,9 @@ sa-token:
 
 playedu:
   instance-id: ${PLAYEDU_INSTANCE_ID:local}
+  points:
+    # 兑换码专用密钥；不设置默认值，也不得复用 JWT 密钥。
+    code-encryption-key: ${PLAYEDU_POINTS_CODE_ENCRYPTION_KEY:}
   acceptance:
     enabled: ${PLAYEDU_ACCEPTANCE_ENABLED:false}
   redis:

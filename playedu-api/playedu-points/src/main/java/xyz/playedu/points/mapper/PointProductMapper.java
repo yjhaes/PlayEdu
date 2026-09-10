@@ -16,7 +16,31 @@
 package xyz.playedu.points.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Result;
+import org.apache.ibatis.annotations.Results;
+import org.apache.ibatis.annotations.Select;
 import xyz.playedu.points.domain.PointProduct;
 
 /** Mapper for redeemable points products. */
-public interface PointProductMapper extends BaseMapper<PointProduct> {}
+public interface PointProductMapper extends BaseMapper<PointProduct> {
+
+    @Select(
+            """
+            SELECT id, name, points_price, status, created_at, updated_at
+            FROM point_products
+            WHERE id = #{id}
+            FOR UPDATE
+            """)
+    @Results(
+            id = "pointProductResultMap",
+            value = {
+                @Result(column = "id", property = "id"),
+                @Result(column = "name", property = "name"),
+                @Result(column = "points_price", property = "pointsPrice"),
+                @Result(column = "status", property = "status"),
+                @Result(column = "created_at", property = "createdAt"),
+                @Result(column = "updated_at", property = "updatedAt")
+            })
+    PointProduct selectByIdForUpdate(@Param("id") Integer id);
+}
