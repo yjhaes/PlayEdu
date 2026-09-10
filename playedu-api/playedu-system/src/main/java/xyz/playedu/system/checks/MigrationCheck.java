@@ -837,6 +837,104 @@ public class MigrationCheck implements CommandLineRunner {
                                                     """);
                                 }
                             });
+                    add(
+                            new HashMap<>() {
+                                {
+                                    put("table", "point_ledgers");
+                                    put("name", "20260910_00_00_00_point_ledgers");
+                                    put(
+                                            "sql",
+                                            """
+                                                    CREATE TABLE `point_ledgers` (
+                                                      `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',
+                                                      `user_id` int unsigned NOT NULL COMMENT '学员ID',
+                                                      `delta` int NOT NULL COMMENT '积分变化值',
+                                                      `balance_after` int NOT NULL COMMENT '变更后余额快照',
+                                                      `type` varchar(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT '流水类型',
+                                                      `source_key` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '全局幂等键',
+                                                      `reason` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci COMMENT '人工调整原因',
+                                                      `operator_admin_id` int unsigned DEFAULT NULL COMMENT '人工调整操作管理员ID',
+                                                      `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                                      PRIMARY KEY (`id`),
+                                                      UNIQUE KEY `uk_point_ledgers_source_key` (`source_key`),
+                                                      KEY `idx_point_ledgers_user_created_id` (`user_id`, `created_at`, `id`),
+                                                      CONSTRAINT `chk_point_ledgers_delta_nonzero` CHECK (`delta` <> 0),
+                                                      CONSTRAINT `chk_point_ledgers_type` CHECK (`type` IN ('COURSE_COMPLETION', 'HISTORICAL_COURSE_COMPLETION', 'REDEMPTION', 'MANUAL_ADJUSTMENT'))
+                                                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='积分流水表';
+                                                    """);
+                                }
+                            });
+                    add(
+                            new HashMap<>() {
+                                {
+                                    put("table", "point_products");
+                                    put("name", "20260910_00_00_01_point_products");
+                                    put(
+                                            "sql",
+                                            """
+                                                    CREATE TABLE `point_products` (
+                                                      `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',
+                                                      `name` varchar(191) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '商品名称',
+                                                      `points_price` int unsigned NOT NULL COMMENT '积分价格',
+                                                      `status` varchar(20) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'ON_SALE' COMMENT '状态',
+                                                      `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                                      `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                                                      PRIMARY KEY (`id`),
+                                                      CONSTRAINT `chk_point_products_points_price_positive` CHECK (`points_price` > 0),
+                                                      CONSTRAINT `chk_point_products_status` CHECK (`status` IN ('ON_SALE', 'OFF_SALE'))
+                                                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='积分兑换商品表';
+                                                    """);
+                                }
+                            });
+                    add(
+                            new HashMap<>() {
+                                {
+                                    put("table", "point_codes");
+                                    put("name", "20260910_00_00_02_point_codes");
+                                    put(
+                                            "sql",
+                                            """
+                                                    CREATE TABLE `point_codes` (
+                                                      `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',
+                                                      `product_id` int unsigned NOT NULL COMMENT '兑换商品ID',
+                                                      `code_ciphertext` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '加密兑换码',
+                                                      `code_digest` varchar(191) CHARACTER SET ascii COLLATE ascii_bin NOT NULL COMMENT '兑换码带密钥摘要',
+                                                      `status` varchar(20) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT 'AVAILABLE' COMMENT '状态',
+                                                      `delivered_at` datetime DEFAULT NULL COMMENT '交付时间',
+                                                      `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                                      `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                                                      PRIMARY KEY (`id`),
+                                                      UNIQUE KEY `uk_point_codes_code_digest` (`code_digest`),
+                                                      KEY `idx_point_codes_product_status_id` (`product_id`, `status`, `id`),
+                                                      CONSTRAINT `chk_point_codes_status` CHECK (`status` IN ('AVAILABLE', 'DELIVERED'))
+                                                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='积分兑换码表';
+                                                    """);
+                                }
+                            });
+                    add(
+                            new HashMap<>() {
+                                {
+                                    put("table", "point_redemptions");
+                                    put("name", "20260910_00_00_03_point_redemptions");
+                                    put(
+                                            "sql",
+                                            """
+                                                    CREATE TABLE `point_redemptions` (
+                                                      `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',
+                                                      `user_id` int unsigned NOT NULL COMMENT '学员ID',
+                                                      `product_id` int unsigned NOT NULL COMMENT '兑换商品ID',
+                                                      `code_id` int unsigned NOT NULL COMMENT '兑换码ID',
+                                                      `points_cost` int unsigned NOT NULL COMMENT '兑换时积分价格快照',
+                                                      `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                                      PRIMARY KEY (`id`),
+                                                      UNIQUE KEY `uk_point_redemptions_code_id` (`code_id`),
+                                                      KEY `idx_point_redemptions_user_created_id` (`user_id`, `created_at`, `id`),
+                                                      KEY `idx_point_redemptions_product_id` (`product_id`),
+                                                      CONSTRAINT `chk_point_redemptions_points_cost_positive` CHECK (`points_cost` > 0)
+                                                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='积分兑换记录表';
+                                                    """);
+                                }
+                            });
                 }
             };
 
