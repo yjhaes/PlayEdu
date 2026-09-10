@@ -27,6 +27,10 @@ public interface PointBalanceMapper {
     @Select("SELECT credit1 FROM users WHERE id = #{userId} FOR UPDATE")
     Integer lockCredit1(@Param("userId") Integer userId);
 
+    /** Locks the learner row so redemption validates the same lock state it commits against. */
+    @Select("SELECT is_lock FROM users WHERE id = #{userId} FOR UPDATE")
+    Integer lockIsLock(@Param("userId") Integer userId);
+
     @Update(
             """
             UPDATE users

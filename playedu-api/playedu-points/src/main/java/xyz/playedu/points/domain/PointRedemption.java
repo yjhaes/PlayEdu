@@ -18,6 +18,7 @@ package xyz.playedu.points.domain;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serializable;
 import java.util.Date;
@@ -39,6 +40,11 @@ public class PointRedemption implements Serializable {
 
     @JsonProperty("code_id")
     private Integer codeId;
+
+    /** Client-supplied key that makes a learner's redemption request idempotent. */
+    @JsonIgnore
+    @JsonProperty("request_key")
+    private String requestKey;
 
     @JsonProperty("points_cost")
     private Integer pointsCost;

@@ -24,6 +24,7 @@ import org.apache.ibatis.annotations.Result;
 import org.apache.ibatis.annotations.ResultMap;
 import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 import xyz.playedu.points.domain.PointCode;
 import xyz.playedu.points.domain.PointCodeStatus;
 
@@ -63,6 +64,15 @@ public interface PointCodeMapper extends BaseMapper<PointCode> {
             """)
     @ResultMap("pointCodeResultMap")
     PointCode findAvailableForUpdate(@Param("productId") Integer productId);
+
+    @Update(
+            """
+            UPDATE point_codes
+            SET status = 'DELIVERED', delivered_at = #{deliveredAt}, updated_at = #{deliveredAt}
+            WHERE id = #{codeId} AND status = 'AVAILABLE'
+            """)
+    int markDelivered(
+            @Param("codeId") Integer codeId, @Param("deliveredAt") java.util.Date deliveredAt);
 
     @Select(
             "SELECT COUNT(*) FROM point_codes WHERE product_id = #{productId} AND status ="

@@ -33,14 +33,15 @@ class PointsSchemaMigrationDefinitionTest {
                         .filter(migration -> POINT_TABLES.contains(migration.get("table")))
                         .toList();
 
-        assertThat(pointMigrations).hasSize(4);
+        assertThat(pointMigrations).hasSize(5);
         assertThat(pointMigrations)
                 .extracting(migration -> migration.get("name"))
                 .containsExactly(
                         "20260910_00_00_00_point_ledgers",
                         "20260910_00_00_01_point_products",
                         "20260910_00_00_02_point_codes",
-                        "20260910_00_00_03_point_redemptions");
+                        "20260910_00_00_03_point_redemptions",
+                        "20260910_00_00_04_point_redemptions_request_key");
         assertThat(MigrationCheck.TABLE_SQL)
                 .extracting(migration -> migration.get("name"))
                 .doesNotHaveDuplicates();
@@ -65,6 +66,19 @@ class PointsSchemaMigrationDefinitionTest {
 
         String redemptionSql = sqlFor(pointMigrations, "point_redemptions");
         assertThat(redemptionSql).contains("UNIQUE KEY `uk_point_redemptions_code_id` (`code_id`)");
+        assertThat(
+                        pointMigrations.stream()
+                                .filter(
+                                        migration ->
+                                                "20260910_00_00_04_point_redemptions_request_key"
+                                                        .equals(migration.get("name")))
+                                .findFirst()
+                                .orElseThrow()
+                                .get("sql"))
+                .contains(
+                        "`request_key` varchar(160)",
+                        "UNIQUE KEY `uk_point_redemptions_user_request_key` (`user_id`,"
+                                + " `request_key`)");
     }
 
     private String sqlFor(List<Map<String, String>> migrations, String table) {

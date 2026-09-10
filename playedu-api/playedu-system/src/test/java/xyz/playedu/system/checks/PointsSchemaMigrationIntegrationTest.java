@@ -59,7 +59,7 @@ class PointsSchemaMigrationIntegrationTest {
     @Test
     void createsThePointsSchemaOnceAndEnforcesItsDataInvariants() {
         List<Map<String, String>> migrations = pointMigrations();
-        assertThat(migrations).hasSize(4);
+        assertThat(migrations).hasSize(5);
 
         Set<String> appliedMigrations = new HashSet<>();
         applyUnappliedMigrations(migrations, appliedMigrations);
@@ -74,6 +74,8 @@ class PointsSchemaMigrationIntegrationTest {
                 .containsExactly("code_digest");
         assertThat(indexColumns("point_redemptions", "uk_point_redemptions_code_id"))
                 .containsExactly("code_id");
+        assertThat(indexColumns("point_redemptions", "uk_point_redemptions_user_request_key"))
+                .containsExactly("user_id", "request_key");
         assertThat(columnNames("point_codes"))
                 .doesNotContain(
                         "user_id", "batch", "batch_id", "expires_at", "revoked_at", "valid_until");
@@ -133,16 +135,26 @@ class PointsSchemaMigrationIntegrationTest {
 
         jdbcTemplate.update(
                 """
-                INSERT INTO point_redemptions (id, user_id, product_id, code_id, points_cost)
-                VALUES (1, 1, 1, 1, 50)
+                INSERT INTO point_redemptions
+                    (id, user_id, product_id, code_id, request_key, points_cost)
+                VALUES (1, 1, 1, 1, 'request-1', 50)
                 """);
         assertThatThrownBy(
                         () ->
                                 jdbcTemplate.update(
                                         """
                                         INSERT INTO point_redemptions
-                                            (id, user_id, product_id, code_id, points_cost)
-                                        VALUES (2, 2, 1, 1, 50)
+                                            (id, user_id, product_id, code_id, request_key, points_cost)
+                                        VALUES (2, 2, 1, 1, 'request-2', 50)
+                                        """))
+                .isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(
+                        () ->
+                                jdbcTemplate.update(
+                                        """
+                                        INSERT INTO point_redemptions
+                                            (id, user_id, product_id, code_id, request_key, points_cost)
+                                        VALUES (3, 1, 1, 2, 'request-1', 50)
                                         """))
                 .isInstanceOf(DataAccessException.class);
     }

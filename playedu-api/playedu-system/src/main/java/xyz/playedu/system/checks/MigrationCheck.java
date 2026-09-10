@@ -935,6 +935,20 @@ public class MigrationCheck implements CommandLineRunner {
                                                     """);
                                 }
                             });
+                    add(
+                            new HashMap<>() {
+                                {
+                                    put("table", "point_redemptions");
+                                    put("name", "20260910_00_00_04_point_redemptions_request_key");
+                                    put(
+                                            "sql",
+                                            """
+                                                    ALTER TABLE `point_redemptions`
+                                                      ADD COLUMN `request_key` varchar(160) DEFAULT NULL COMMENT '客户端幂等键' AFTER `code_id`,
+                                                      ADD UNIQUE KEY `uk_point_redemptions_user_request_key` (`user_id`, `request_key`);
+                                                    """);
+                                }
+                            });
                 }
             };
 
