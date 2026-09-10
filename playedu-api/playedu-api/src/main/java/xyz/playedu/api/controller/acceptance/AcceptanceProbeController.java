@@ -159,13 +159,17 @@ public class AcceptanceProbeController {
     }
 
     private Map<String, Object> heartbeatData(ActiveLearningLeaseService.HeartbeatResult result) {
-        return Map.of(
-                "outcome", result.outcome().name(),
-                "session_id", result.sessionId(),
-                "added_duration", result.addedDuration(),
-                "active_course_id", result.activeCourseId(),
-                "active_hour_id", result.activeHourId(),
-                "instance_id", instanceId);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("outcome", result.outcome().name());
+        data.put("session_id", result.sessionId());
+        data.put("added_duration", result.addedDuration());
+        data.put("active_course_id", result.activeCourseId());
+        data.put("active_hour_id", result.activeHourId());
+        data.put("instance_id", instanceId);
+        if (result.earnedPoints() > 0) {
+            data.put("earned_points", result.earnedPoints());
+        }
+        return data;
     }
 
     private void sleep(long holdMillis) {

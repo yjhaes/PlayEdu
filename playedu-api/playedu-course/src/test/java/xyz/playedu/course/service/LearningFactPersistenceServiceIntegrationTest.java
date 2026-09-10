@@ -35,7 +35,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import org.apache.ibatis.annotations.Mapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,6 +70,7 @@ import xyz.playedu.course.service.impl.UserCourseHourRecordServiceImpl;
 import xyz.playedu.course.service.impl.UserCourseRecordServiceImpl;
 import xyz.playedu.course.service.impl.UserLearnDurationRecordServiceImpl;
 import xyz.playedu.course.service.impl.UserLearnDurationStatsServiceImpl;
+import xyz.playedu.points.service.impl.PointBalanceServiceImpl;
 
 @SpringBootTest(classes = LearningFactPersistenceServiceIntegrationTest.TestApplication.class)
 @Testcontainers(disabledWithoutDocker = true)
@@ -113,10 +113,38 @@ class LearningFactPersistenceServiceIntegrationTest {
     @BeforeEach
     void setUp() {
         eventCollector.clear();
+        jdbcTemplate.execute("DROP TABLE IF EXISTS point_ledgers");
+        jdbcTemplate.execute("DROP TABLE IF EXISTS users");
         jdbcTemplate.execute("DROP TABLE IF EXISTS user_learn_duration_records");
         jdbcTemplate.execute("DROP TABLE IF EXISTS user_learn_duration_stats");
         jdbcTemplate.execute("DROP TABLE IF EXISTS user_course_hour_records");
         jdbcTemplate.execute("DROP TABLE IF EXISTS user_course_records");
+        jdbcTemplate.execute(
+                """
+                CREATE TABLE users (
+                    id int NOT NULL,
+                    credit1 int NOT NULL DEFAULT 0,
+                    updated_at timestamp NULL DEFAULT NULL,
+                    PRIMARY KEY (id)
+                ) ENGINE=InnoDB
+                """);
+        jdbcTemplate.execute("INSERT INTO users (id, credit1) VALUES (7, 0)");
+        jdbcTemplate.execute(
+                """
+                CREATE TABLE point_ledgers (
+                    id int unsigned NOT NULL AUTO_INCREMENT,
+                    user_id int NOT NULL,
+                    delta int NOT NULL,
+                    balance_after int NOT NULL,
+                    type varchar(64) NOT NULL,
+                    source_key varchar(191) NOT NULL,
+                    reason varchar(255) DEFAULT NULL,
+                    operator_admin_id int DEFAULT NULL,
+                    created_at timestamp NULL DEFAULT NULL,
+                    PRIMARY KEY (id),
+                    UNIQUE KEY uk_point_ledgers_source_key (source_key)
+                ) ENGINE=InnoDB
+                """);
         jdbcTemplate.execute(
                 """
                 CREATE TABLE user_course_hour_records (
@@ -241,10 +269,26 @@ class LearningFactPersistenceServiceIntegrationTest {
     }
 
     @Test
+    void awardsPointsOnlyForTheFirstCourseCompletionEvenAfterLearningRecordsAreReset() {
+        assertThat(learningFactPersistenceService.record(7, 8, 9, 100, 100).earnedPoints())
+                .isEqualTo(10);
+        assertThat(queryCredit1()).isEqualTo(10);
+        assertThat(pointLedgerCount()).isEqualTo(1);
+
+        jdbcTemplate.execute("DELETE FROM user_course_hour_records");
+        jdbcTemplate.execute("DELETE FROM user_course_records");
+
+        assertThat(learningFactPersistenceService.record(7, 8, 9, 100, 100).earnedPoints())
+                .isZero();
+        assertThat(queryCredit1()).isEqualTo(10);
+        assertThat(pointLedgerCount()).isEqualTo(1);
+    }
+
+    @Test
     void rollsBackEveryAuthoritativeWriteAndDoesNotPublishWhenTheDurationWriteFails() {
         jdbcTemplate.execute("DROP TABLE user_learn_duration_stats");
 
-        assertThatThrownBy(() -> learningFactPersistenceService.record(7, 8, 9, 10, 100))
+        assertThatThrownBy(() -> learningFactPersistenceService.record(7, 8, 9, 100, 100))
                 .isInstanceOf(Exception.class);
 
         assertThat(
@@ -259,6 +303,8 @@ class LearningFactPersistenceServiceIntegrationTest {
                         jdbcTemplate.queryForObject(
                                 "SELECT COUNT(*) FROM user_learn_duration_records", Integer.class))
                 .isZero();
+        assertThat(queryCredit1()).isZero();
+        assertThat(pointLedgerCount()).isZero();
         assertThat(eventCollector.events).isEmpty();
     }
 
@@ -268,28 +314,30 @@ class LearningFactPersistenceServiceIntegrationTest {
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
         try {
-            List<Future<?>> writes =
+            List<Future<LearningFactPersistenceResult>> writes =
                     List.of(
                             executor.submit(
                                     () -> {
                                         ready.countDown();
                                         start.await();
-                                        learningFactPersistenceService.record(7, 8, 9, 10, 100);
-                                        return null;
+                                        return learningFactPersistenceService.record(
+                                                7, 8, 9, 100, 100);
                                     }),
                             executor.submit(
                                     () -> {
                                         ready.countDown();
                                         start.await();
-                                        learningFactPersistenceService.record(7, 8, 9, 10, 100);
-                                        return null;
+                                        return learningFactPersistenceService.record(
+                                                7, 8, 9, 100, 100);
                                     }));
 
             ready.await();
             start.countDown();
-            for (Future<?> write : writes) {
-                write.get();
-            }
+            assertThat(
+                            writes.stream()
+                                    .map(this::getResult)
+                                    .mapToInt(LearningFactPersistenceResult::earnedPoints))
+                    .containsExactlyInAnyOrder(0, 10);
         } finally {
             executor.shutdownNow();
         }
@@ -303,6 +351,8 @@ class LearningFactPersistenceServiceIntegrationTest {
                                 "SELECT COUNT(*) FROM user_learn_duration_stats", Integer.class))
                 .isEqualTo(1);
         assertThat(eventCollector.events).hasSize(1);
+        assertThat(queryCredit1()).isEqualTo(10);
+        assertThat(pointLedgerCount()).isEqualTo(1);
     }
 
     @Test
@@ -338,11 +388,27 @@ class LearningFactPersistenceServiceIntegrationTest {
         }
     }
 
+    private int queryCredit1() {
+        return jdbcTemplate.queryForObject("SELECT credit1 FROM users WHERE id = 7", Integer.class);
+    }
+
+    private int pointLedgerCount() {
+        return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM point_ledgers", Integer.class);
+    }
+
+    private LearningFactPersistenceResult getResult(Future<LearningFactPersistenceResult> write) {
+        try {
+            return write.get();
+        } catch (Exception exception) {
+            throw new AssertionError("并发课程完成失败", exception);
+        }
+    }
+
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @EnableTransactionManagement
     @EnableAsync
-    @MapperScan(basePackages = "xyz.playedu.course.mapper", annotationClass = Mapper.class)
+    @MapperScan({"xyz.playedu.course.mapper", "xyz.playedu.points.mapper"})
     @Import({
         DailyLearningDurationEventPublisher.class,
         DailyLearningRankingEventListener.class,
@@ -354,6 +420,7 @@ class LearningFactPersistenceServiceIntegrationTest {
         UserCourseRecordServiceImpl.class,
         UserLearnDurationRecordServiceImpl.class,
         UserLearnDurationStatsServiceImpl.class,
+        PointBalanceServiceImpl.class,
         TestDependencies.class
     })
     static class TestApplication {}

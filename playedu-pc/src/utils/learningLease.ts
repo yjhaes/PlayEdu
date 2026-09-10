@@ -8,6 +8,7 @@ export type LearningLeaseStatus =
 export interface LearningHeartbeatData {
   session_id: string;
   added_duration: number;
+  earned_points?: number;
   active_course_id: number | null;
   active_hour_id: number | null;
 }

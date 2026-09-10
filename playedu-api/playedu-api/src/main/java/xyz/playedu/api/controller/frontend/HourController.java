@@ -173,6 +173,9 @@ public class HourController {
         data.put("added_duration", result.addedDuration());
         data.put("active_course_id", result.activeCourseId());
         data.put("active_hour_id", result.activeHourId());
+        if (result.earnedPoints() > 0) {
+            data.put("earned_points", result.earnedPoints());
+        }
         return data;
     }
 }

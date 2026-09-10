@@ -163,8 +163,10 @@ public class ActiveLearningLeaseService {
                         Long.toString(maxContinuousInterval.toMillis()));
         HeartbeatResult result = HeartbeatResult.from(response);
         if (result.outcome() == Outcome.CONTINUED && result.addedDuration() > 0) {
-            learningFactPersistenceService.recordIncrement(
-                    userId, courseId, hourId, result.addedDuration(), hourDuration);
+            LearningFactPersistenceResult persistenceResult =
+                    learningFactPersistenceService.recordIncrement(
+                            userId, courseId, hourId, result.addedDuration(), hourDuration);
+            return result.withEarnedPoints(persistenceResult.earnedPoints());
         }
         return result;
     }
@@ -213,7 +215,22 @@ public class ActiveLearningLeaseService {
             String sessionId,
             int addedDuration,
             Integer activeCourseId,
-            Integer activeHourId) {
+            Integer activeHourId,
+            int earnedPoints) {
+
+        public HeartbeatResult(
+                Outcome outcome,
+                String sessionId,
+                int addedDuration,
+                Integer activeCourseId,
+                Integer activeHourId) {
+            this(outcome, sessionId, addedDuration, activeCourseId, activeHourId, 0);
+        }
+
+        public HeartbeatResult withEarnedPoints(int earnedPoints) {
+            return new HeartbeatResult(
+                    outcome, sessionId, addedDuration, activeCourseId, activeHourId, earnedPoints);
+        }
 
         private static HeartbeatResult from(List<?> response) {
             return new HeartbeatResult(

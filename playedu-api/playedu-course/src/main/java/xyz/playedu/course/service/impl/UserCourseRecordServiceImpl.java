@@ -43,17 +43,17 @@ public class UserCourseRecordServiceImpl
     }
 
     @Override
-    public void storeOrUpdate(
+    public boolean storeOrUpdate(
             Integer userId, Integer courseId, Integer hourCount, Integer finishedCount) {
         if (hourCount == 0) {
-            return;
+            return false;
         }
 
         UserCourseRecord record = find(userId, courseId);
 
         // 已看完
         if (record != null && record.getIsFinished() == 1) {
-            return;
+            return false;
         }
 
         boolean isFinished = finishedCount >= hourCount;
@@ -84,6 +84,7 @@ public class UserCourseRecordServiceImpl
 
             updateById(updateRecord);
         }
+        return isFinished;
     }
 
     @Override

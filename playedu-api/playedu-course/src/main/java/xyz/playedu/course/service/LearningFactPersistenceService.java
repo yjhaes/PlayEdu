@@ -24,10 +24,16 @@ import xyz.playedu.common.redis.RedisLockException;
 import xyz.playedu.course.domain.UserCourseHourRecord;
 import xyz.playedu.course.event.DailyLearningDurationEventPublisher;
 import xyz.playedu.course.event.DailyLearningDurationIncrement;
+import xyz.playedu.points.domain.PointLedgerType;
+import xyz.playedu.points.service.PointBalanceChange;
+import xyz.playedu.points.service.PointBalanceChangeResult;
+import xyz.playedu.points.service.PointBalanceService;
 
 /** Persists all MySQL facts created by one accepted course-hour progress interval. */
 @Service
 public class LearningFactPersistenceService {
+
+    private static final int COURSE_COMPLETION_REWARD_POINTS = 10;
 
     private final CourseHourService courseHourService;
     private final DailyLearningDurationEventPublisher durationEventPublisher;
@@ -36,6 +42,7 @@ public class LearningFactPersistenceService {
     private final UserCourseRecordService userCourseRecordService;
     private final UserLearnDurationRecordService userLearnDurationRecordService;
     private final UserLearnDurationStatsService userLearnDurationStatsService;
+    private final PointBalanceService pointBalanceService;
 
     public LearningFactPersistenceService(
             CourseHourService courseHourService,
@@ -44,7 +51,8 @@ public class LearningFactPersistenceService {
             UserCourseHourRecordService userCourseHourRecordService,
             UserCourseRecordService userCourseRecordService,
             UserLearnDurationRecordService userLearnDurationRecordService,
-            UserLearnDurationStatsService userLearnDurationStatsService) {
+            UserLearnDurationStatsService userLearnDurationStatsService,
+            PointBalanceService pointBalanceService) {
         this.courseHourService = courseHourService;
         this.durationEventPublisher = durationEventPublisher;
         this.distributedLock = distributedLock;
@@ -52,23 +60,23 @@ public class LearningFactPersistenceService {
         this.userCourseRecordService = userCourseRecordService;
         this.userLearnDurationRecordService = userLearnDurationRecordService;
         this.userLearnDurationStatsService = userLearnDurationStatsService;
+        this.pointBalanceService = pointBalanceService;
     }
 
     @Transactional
-    public void record(
+    public LearningFactPersistenceResult record(
             Integer userId,
             Integer courseId,
             Integer hourId,
             Integer watchedDuration,
             Integer hourDuration) {
         try {
-            distributedLock.execute(
+            return distributedLock.execute(
                     "learning-fact",
                     userId.toString(),
                     () -> {
-                        persistLearningFacts(
+                        return persistLearningFacts(
                                 userId, courseId, hourId, watchedDuration, hourDuration);
-                        return null;
                     });
         } catch (RedisLockException exception) {
             throw new ServiceException("学习记录繁忙，请重试");
@@ -77,17 +85,17 @@ public class LearningFactPersistenceService {
 
     /** Records a server-confirmed continuous interval without trusting a client progress value. */
     @Transactional
-    public void recordIncrement(
+    public LearningFactPersistenceResult recordIncrement(
             Integer userId,
             Integer courseId,
             Integer hourId,
             Integer durationIncrement,
             Integer hourDuration) {
         if (durationIncrement <= 0) {
-            return;
+            return LearningFactPersistenceResult.NO_REWARD;
         }
         try {
-            distributedLock.execute(
+            return distributedLock.execute(
                     "learning-fact",
                     userId.toString(),
                     () -> {
@@ -95,20 +103,19 @@ public class LearningFactPersistenceService {
                                 userCourseHourRecordService.find(userId, courseId, hourId);
                         int previousDuration =
                                 previous == null ? 0 : previous.getFinishedDuration();
-                        persistLearningFacts(
+                        return persistLearningFacts(
                                 userId,
                                 courseId,
                                 hourId,
                                 previousDuration + durationIncrement,
                                 hourDuration);
-                        return null;
                     });
         } catch (RedisLockException exception) {
             throw new ServiceException("学习记录繁忙，请重试");
         }
     }
 
-    private void persistLearningFacts(
+    private LearningFactPersistenceResult persistLearningFacts(
             Integer userId,
             Integer courseId,
             Integer hourId,
@@ -119,14 +126,16 @@ public class LearningFactPersistenceService {
         int acceptedDuration = Math.min(watchedDuration, hourDuration);
         if (acceptedDuration <= previousDuration
                 || (previous != null && previous.getIsFinished() == 1)) {
-            return;
+            return LearningFactPersistenceResult.NO_REWARD;
         }
 
         userCourseHourRecordService.storeOrUpdate(
                 userId, courseId, hourId, acceptedDuration, hourDuration);
         Integer hourCount = courseHourService.getCountByCourseId(courseId);
         Integer finishedCount = userCourseHourRecordService.getFinishedHourCount(userId, courseId);
-        userCourseRecordService.storeOrUpdate(userId, courseId, hourCount, finishedCount);
+        boolean completedForTheFirstTime =
+                userCourseRecordService.storeOrUpdate(userId, courseId, hourCount, finishedCount);
+        int earnedPoints = completedForTheFirstTime ? awardCourseCompletion(userId, courseId) : 0;
 
         long endedAt = System.currentTimeMillis();
         long duration = (long) (acceptedDuration - previousDuration) * 1000;
@@ -139,5 +148,20 @@ public class LearningFactPersistenceService {
             durationEventPublisher.publishAfterCommit(
                     userId, increment.learningDate(), increment.duration());
         }
+        return new LearningFactPersistenceResult(earnedPoints);
+    }
+
+    private int awardCourseCompletion(Integer userId, Integer courseId) {
+        PointBalanceChangeResult result =
+                pointBalanceService.apply(
+                        new PointBalanceChange(
+                                userId,
+                                COURSE_COMPLETION_REWARD_POINTS,
+                                PointLedgerType.COURSE_COMPLETION,
+                                "course-completion:" + userId + ":" + courseId,
+                                null,
+                                null,
+                                false));
+        return result.applied() ? COURSE_COMPLETION_REWARD_POINTS : 0;
     }
 }

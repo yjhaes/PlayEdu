@@ -61,6 +61,7 @@ import xyz.playedu.course.domain.CourseHour;
 import xyz.playedu.course.service.ActiveLearningLeaseService;
 import xyz.playedu.course.service.CourseHourService;
 import xyz.playedu.course.service.CourseService;
+import xyz.playedu.course.service.LearningFactPersistenceResult;
 import xyz.playedu.course.service.LearningFactPersistenceService;
 import xyz.playedu.course.service.UserCourseHourRecordService;
 import xyz.playedu.resource.service.ResourceService;
@@ -107,6 +108,13 @@ class HourControllerLearningLeaseRedisIntegrationTest {
         when(userBus.canSeeCourse(7, 8)).thenReturn(true);
         when(courseHourService.findOrFail(9, 8)).thenReturn(hour(9));
         when(courseHourService.findOrFail(10, 8)).thenReturn(hour(10));
+        when(learningFactPersistenceService.recordIncrement(
+                        org.mockito.ArgumentMatchers.anyInt(),
+                        org.mockito.ArgumentMatchers.anyInt(),
+                        org.mockito.ArgumentMatchers.anyInt(),
+                        org.mockito.ArgumentMatchers.anyInt(),
+                        org.mockito.ArgumentMatchers.anyInt()))
+                .thenReturn(LearningFactPersistenceResult.NO_REWARD);
     }
 
     @AfterEach

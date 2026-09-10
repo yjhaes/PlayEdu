@@ -16,9 +16,11 @@
 package xyz.playedu.course.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -75,6 +77,9 @@ class ActiveLearningLeaseServiceIntegrationTest {
     void setUp() {
         redisTemplate.getConnectionFactory().getConnection().serverCommands().flushDb();
         clock.set(Instant.parse("2026-09-09T00:00:00Z"));
+        when(learningFactPersistenceService.recordIncrement(
+                        anyInt(), anyInt(), anyInt(), anyInt(), anyInt()))
+                .thenReturn(LearningFactPersistenceResult.NO_REWARD);
     }
 
     @Test

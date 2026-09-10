@@ -122,6 +122,26 @@ class HourControllerLearningLeaseTest {
     }
 
     @Test
+    void returnsTheCompletionRewardOnlyWhenItWasActuallyIssued() throws Exception {
+        when(activeLearningLeaseService.heartbeat(7, 8, 9, null, 100))
+                .thenReturn(
+                        new ActiveLearningLeaseService.HeartbeatResult(
+                                ActiveLearningLeaseService.Outcome.CONTINUED,
+                                "session-1",
+                                10,
+                                8,
+                                9,
+                                10));
+
+        mockMvc.perform(
+                        post("/api/v1/course/8/hour/9/ping")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.earned_points").value(10));
+    }
+
+    @Test
     void exposesRedisLeaseFailuresAsRetryableServiceUnavailable() throws Exception {
         when(activeLearningLeaseService.heartbeat(7, 8, 9, null, 100))
                 .thenThrow(

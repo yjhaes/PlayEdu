@@ -30,7 +30,8 @@ public interface UserCourseRecordService extends IService<UserCourseRecord> {
 
     UserCourseRecord find(Integer userId, Integer courseId);
 
-    void storeOrUpdate(Integer userId, Integer courseId, Integer hourCount, Integer finishedCount);
+    boolean storeOrUpdate(
+            Integer userId, Integer courseId, Integer hourCount, Integer finishedCount);
 
     List<UserCourseRecord> chunk(Integer userId, List<Integer> courseIds);
 
