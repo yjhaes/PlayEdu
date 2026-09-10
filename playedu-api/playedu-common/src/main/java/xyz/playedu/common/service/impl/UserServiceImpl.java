@@ -104,7 +104,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setPassword(passwordHashed);
         user.setSalt(salt);
         user.setIdCard(idCard);
-        user.setCredit1(0);
         user.setIsSetPassword(0);
         user.setIsActive(1);
         user.setIsLock(0);
