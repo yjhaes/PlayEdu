@@ -141,6 +141,7 @@ const PointsCenterPage = () => {
           : current
       );
     } catch (error) {
+      historicalNoticeShown.current = false;
       Toast.show({
         content: errorMessage(error, "历史补发提示确认失败，请稍后重试"),
       });
