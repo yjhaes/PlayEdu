@@ -134,7 +134,6 @@ const MemberPage = () => {
     let res: any = await member.detail();
     if (res) {
       dispatch(loginAction(res.data));
-      setPointsBalance((current) => current ?? res.data.user?.credit1 ?? 0);
       setFileList([]);
       setInit(true);
     }
@@ -253,9 +252,11 @@ const MemberPage = () => {
           <div className={styles["points-entry-value"]}>
             {pointsLoading ? (
               <Skeleton animated style={{ width: 52, height: 22 }} />
+            ) : pointsBalance === null ? (
+              <span className={styles["points-unavailable"]}>暂不可用</span>
             ) : (
               <>
-                <strong>{pointsBalance ?? 0}</strong>
+                <strong>{pointsBalance}</strong>
                 <span>积分</span>
               </>
             )}
