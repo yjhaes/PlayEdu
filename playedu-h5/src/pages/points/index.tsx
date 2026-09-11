@@ -274,6 +274,7 @@ const PointsCenterPage = () => {
 
   const retryCurrentTab = () => {
     setCenterError("");
+    void loadSummary(false);
     loadedTabs.current.add(activeTab);
     void loadTab(activeTab, 1);
   };
@@ -316,7 +317,14 @@ const PointsCenterPage = () => {
       setDeliveredRedemption(response.data);
       setRetryRedemption(null);
       Toast.show({ content: "兑换成功，兑换码已交付" });
-      await Promise.all([loadSummary(false), loadProducts(1)]);
+      const refreshRedemptions = loadedTabs.current.has("redemptions")
+        ? loadRedemptions(1)
+        : Promise.resolve();
+      await Promise.all([
+        loadSummary(false),
+        loadProducts(1),
+        refreshRedemptions,
+      ]);
     } catch (error) {
       setOperationError(redemptionErrorMessage(error));
     } finally {

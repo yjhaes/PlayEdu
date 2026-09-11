@@ -146,7 +146,8 @@ const MemberPage = () => {
       const res = await pointApi.summary();
       setPointsBalance(res.data.credit1);
     } catch {
-      setPointsBalance((current) => current ?? 0);
+      // The user detail request remains the fallback so negative and non-zero balances survive
+      // a temporary points-summary failure.
     } finally {
       setPointsLoading(false);
     }
