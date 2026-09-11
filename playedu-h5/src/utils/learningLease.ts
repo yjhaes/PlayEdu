@@ -62,6 +62,8 @@ export class LearningLeaseController {
 
   private status: LearningLeaseStatus = "idle";
 
+  private earnedPointsNotified = false;
+
   constructor(
     private readonly client: LearningLeaseClient,
     private readonly callbacks: LearningLeaseCallbacks = {}
@@ -373,7 +375,12 @@ export class LearningLeaseController {
   }
 
   private notifyEarnedPoints(result: LearningHeartbeatData): void {
-    if (typeof result.earned_points === "number" && result.earned_points > 0) {
+    if (
+      !this.earnedPointsNotified &&
+      typeof result.earned_points === "number" &&
+      result.earned_points > 0
+    ) {
+      this.earnedPointsNotified = true;
       this.callbacks.onEarnedPoints?.(result.earned_points);
     }
   }
