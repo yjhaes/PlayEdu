@@ -142,6 +142,7 @@ const PointsCenterPage = () => {
       );
     } catch (error) {
       historicalNoticeShown.current = false;
+      setCenterError(errorMessage(error, "历史补发提示确认失败，请重试"));
       Toast.show({
         content: errorMessage(error, "历史补发提示确认失败，请稍后重试"),
       });
@@ -270,7 +271,7 @@ const PointsCenterPage = () => {
 
   const refresh = async () => {
     setCenterError("");
-    await loadSummary(false);
+    await loadSummary(!historicalNoticeShown.current);
     await loadTab(activeTab, 1);
   };
 
