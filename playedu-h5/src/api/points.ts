@@ -32,7 +32,7 @@ export interface PointsSummary {
 }
 
 export interface PointLedger {
-  id?: number;
+  id: number;
   delta: number;
   balance_after: number;
   type: PointLedgerType;

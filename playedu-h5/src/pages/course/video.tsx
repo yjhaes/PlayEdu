@@ -136,7 +136,6 @@ const CoursePlayPage = () => {
         },
         onEarnedPoints: (points) => {
           setEarnedPoints(points);
-          Toast.show({ content: `获得 ${points} 积分` });
         },
         onConflict: () => {
           setLeaseMessage(LEARNING_CONFLICT_MESSAGE);

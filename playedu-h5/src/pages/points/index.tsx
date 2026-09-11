@@ -73,8 +73,9 @@ const redemptionErrorMessage = (error: unknown): string => {
 };
 
 const createRequestKey = (): string => {
-  if (typeof globalThis.crypto?.randomUUID === "function") {
-    return globalThis.crypto.randomUUID();
+  const browserCrypto = typeof window !== "undefined" ? window.crypto : null;
+  if (typeof browserCrypto?.randomUUID === "function") {
+    return browserCrypto.randomUUID();
   }
   return `h5-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
@@ -274,7 +275,7 @@ const PointsCenterPage = () => {
 
   const retryCurrentTab = () => {
     setCenterError("");
-    void loadSummary(false);
+    void loadSummary(!historicalNoticeShown.current);
     loadedTabs.current.add(activeTab);
     void loadTab(activeTab, 1);
   };
@@ -340,6 +341,10 @@ const PointsCenterPage = () => {
     }
     if (availableCount <= 0) {
       setOperationError("库存不足，商品当前可兑换库存为 0");
+      return;
+    }
+    if (summary === null) {
+      setOperationError("积分余额暂不可用，请刷新后重试");
       return;
     }
     if (summary && summary.credit1 < product.points_price) {
@@ -418,8 +423,10 @@ const PointsCenterPage = () => {
             <div className={styles["balance-label"]}>当前积分余额</div>
             {summaryLoading && !summary ? (
               <Skeleton animated style={{ width: 130, height: 42 }} />
+            ) : summary === null ? (
+              <div className={styles["balance-unavailable"]}>暂不可用</div>
             ) : (
-              <div className={styles["balance-number"]}>{summary?.credit1 ?? 0}</div>
+              <div className={styles["balance-number"]}>{summary.credit1}</div>
             )}
             <div className={styles["balance-footer"]}>
               <span>积分不会因时间经过而失效</span>
@@ -516,6 +523,7 @@ const PointsCenterPage = () => {
                 const availableCount = product.available_count ?? 0;
                 const soldOut = availableCount <= 0;
                 const offSale = product.status !== "ON_SALE";
+                const balanceUnavailable = summary === null;
                 const insufficient =
                   summary !== null && summary.credit1 < product.points_price;
                 return (
@@ -535,7 +543,12 @@ const PointsCenterPage = () => {
                     <Button
                       block
                       color="primary"
-                      disabled={offSale || soldOut || insufficient}
+                      disabled={
+                        offSale ||
+                        soldOut ||
+                        balanceUnavailable ||
+                        insufficient
+                      }
                       loading={redeemingProductId === product.id}
                       onClick={() => askRedeem(product)}
                     >
@@ -543,6 +556,8 @@ const PointsCenterPage = () => {
                         ? "已下架"
                         : soldOut
                         ? "已兑完"
+                        : balanceUnavailable
+                        ? "积分余额不可用"
                         : insufficient
                         ? "积分不足"
                         : "立即兑换"}
@@ -568,7 +583,7 @@ const PointsCenterPage = () => {
               {ledgers.map((ledger) => {
                 const delta = ledger.delta ?? 0;
                 return (
-                  <div className={styles["ledger-card"]} key={`${ledger.created_at}-${delta}`}>
+                  <div className={styles["ledger-card"]} key={ledger.id}>
                     <div className={styles["ledger-heading"]}>
                       <strong
                         className={

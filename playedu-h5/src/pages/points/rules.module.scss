@@ -66,24 +66,24 @@
 .rule-card {
   margin-top: 12px;
   padding: 16px;
+
+  ul {
+    margin: 12px 0 0;
+    padding-left: 20px;
+    color: rgba(0, 0, 0, 0.65);
+    font-size: 14px;
+    line-height: 22px;
+  }
+
+  li {
+    margin-bottom: 8px;
+  }
 }
 
 .rule-title {
   color: rgba(0, 0, 0, 0.88);
   font-size: 16px;
   font-weight: 600;
-}
-
-ul {
-  margin: 12px 0 0;
-  padding-left: 20px;
-  color: rgba(0, 0, 0, 0.65);
-  font-size: 14px;
-  line-height: 22px;
-}
-
-li {
-  margin-bottom: 8px;
 }
 
 .facts {
