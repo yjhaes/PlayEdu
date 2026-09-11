@@ -30,6 +30,7 @@ interface LearningLeaseClient {
 
 interface LearningLeaseCallbacks {
   onStatusChange?: (status: LearningLeaseStatus) => void;
+  onEarnedPoints?: (points: number) => void;
   onConflict?: (error: LearningLeaseError) => void;
   onInvalidSession?: (error: LearningLeaseError) => void;
   onUnavailable?: (error: LearningLeaseError) => void;
@@ -60,6 +61,8 @@ export class LearningLeaseController {
   private version = 0;
 
   private status: LearningLeaseStatus = "idle";
+
+  private earnedPointsNotified = false;
 
   constructor(
     private readonly client: LearningLeaseClient,
@@ -193,6 +196,7 @@ export class LearningLeaseController {
       }
 
       this.sessionId = result.session_id;
+      this.notifyEarnedPoints(result);
       this.setStatus("active");
       this.startHeartbeatTimer();
       return true;
@@ -235,6 +239,8 @@ export class LearningLeaseController {
 
       if (!result || result.session_id !== sessionId) {
         this.fail(version, {}, "unavailable", sessionId);
+      } else {
+        this.notifyEarnedPoints(result);
       }
     } catch (error) {
       if (this.isCurrent(version)) {
@@ -366,6 +372,17 @@ export class LearningLeaseController {
   private setStatus(status: LearningLeaseStatus): void {
     this.status = status;
     this.callbacks.onStatusChange?.(status);
+  }
+
+  private notifyEarnedPoints(result: LearningHeartbeatData): void {
+    if (
+      !this.earnedPointsNotified &&
+      typeof result.earned_points === "number" &&
+      result.earned_points > 0
+    ) {
+      this.earnedPointsNotified = true;
+      this.callbacks.onEarnedPoints?.(result.earned_points);
+    }
   }
 
   private classify(error: LearningLeaseError):

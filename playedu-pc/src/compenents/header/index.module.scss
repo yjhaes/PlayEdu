@@ -75,3 +75,16 @@
     }
   }
 }
+
+.points-menu-item {
+  min-width: 170px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.points-menu-balance {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+}

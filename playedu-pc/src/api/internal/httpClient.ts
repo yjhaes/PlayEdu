@@ -1,4 +1,4 @@
-import axios, { Axios, AxiosResponse } from "axios";
+import axios, { Axios, AxiosRequestConfig, AxiosResponse } from "axios";
 import { message } from "antd";
 import {
   getToken,
@@ -76,8 +76,8 @@ export class HttpClient {
     );
   }
 
-  get(url: string, params: object) {
-    return new Promise((resolve, reject) => {
+  get<T = unknown>(url: string, params: object): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
       this.axios
         .get(url, {
           params: params,
@@ -104,10 +104,14 @@ export class HttpClient {
     });
   }
 
-  post(url: string, params: object) {
-    return new Promise((resolve, reject) => {
+  post<T = unknown>(
+    url: string,
+    params: object,
+    config?: AxiosRequestConfig
+  ): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
       this.axios
-        .post(url, params)
+        .post(url, params, config)
         .then((res) => {
           resolve(res.data);
         })
@@ -130,8 +134,8 @@ export class HttpClient {
     });
   }
 
-  request(config: object) {
-    return new Promise((resolve, reject) => {
+  request<T = unknown>(config: AxiosRequestConfig): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
       this.axios
         .request(config)
         .then((res) => {

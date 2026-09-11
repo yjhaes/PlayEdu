@@ -3,6 +3,7 @@ import styles from "./video.module.scss";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { course as Course } from "../../api/index";
+import { notifyPointsBalanceChanged } from "../../api/points";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { message } from "antd";
 import {
@@ -53,6 +54,7 @@ const CoursePalyPage = () => {
   const [watchedSeconds, setWatchedSeconds] = useState(0);
   const [resourceUrl, setResourceUrl] = useState<ResourceUrlModel>({});
   const [leaseMessage, setLeaseMessage] = useState("");
+  const [earnedPoints, setEarnedPoints] = useState<number | null>(null);
   const playRef = useRef(0);
   const watchRef = useRef(0);
   const totalRef = useRef(0);
@@ -120,6 +122,10 @@ const CoursePalyPage = () => {
             setLeaseMessage("");
           }
         },
+        onEarnedPoints: (points) => {
+          setEarnedPoints(points);
+          notifyPointsBalanceChanged();
+        },
         onConflict: () => {
           setLeaseMessage(LEARNING_CONFLICT_MESSAGE);
           pauseForLeaseIssue();
@@ -153,6 +159,7 @@ const CoursePalyPage = () => {
     setLeaseMessage("");
     setPlayingTime(0);
     setWatchedSeconds(0);
+    setEarnedPoints(null);
     getCourse();
     getDetail();
 
@@ -430,6 +437,22 @@ const CoursePalyPage = () => {
           )}
         </div>
       </div>
+      {earnedPoints !== null && (
+        <div className={styles["reward-notice"]} role="status">
+          <span>获得 {earnedPoints} 积分</span>
+          <button type="button" onClick={() => navigate("/points")}>
+            查看积分中心
+          </button>
+          <button
+            type="button"
+            className={styles["reward-close"]}
+            aria-label="关闭积分奖励提示"
+            onClick={() => setEarnedPoints(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
     </div>
   );
 };

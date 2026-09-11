@@ -4,6 +4,8 @@ import { Modal, Button, Dropdown, Image } from "antd";
 import type { MenuProps } from "antd";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { points } from "../../api";
+import { POINTS_BALANCE_CHANGED_EVENT } from "../../api/points";
 import {
   logoutAction,
   saveCurrentDepId,
@@ -16,7 +18,7 @@ import {
 } from "../../utils/index";
 import { ChangePasswordModel } from "../change-password";
 import { UserInfoModel } from "../user-info";
-import { ExclamationCircleFilled } from "@ant-design/icons";
+import { ExclamationCircleFilled, StarOutlined } from "@ant-design/icons";
 import logo from "../../assets/logo.png";
 import memberDefaultAvatar from "../../assets/thumb/avatar.png";
 const { confirm } = Modal;
@@ -35,6 +37,8 @@ export const Header: React.FC = () => {
   const [userInfoVisiale, setUserInfoVisiale] = useState<boolean>(false);
   const [departmentsMenu, setDepartmentsMenu] = useState<any>([]);
   const [currentDepartment, setCurrentDepartment] = useState<string>("");
+  const [pointsBalance, setPointsBalance] = useState<number | null>(null);
+  const [pointsLoading, setPointsLoading] = useState(false);
   const [currentNav, serCurrentNav] = useState(location.pathname);
   const resourceUrl = useSelector(
     (state: any) => state.loginUser.value.resourceUrl
@@ -66,6 +70,46 @@ export const Header: React.FC = () => {
     serCurrentNav(location.pathname);
   }, [location.pathname]);
 
+  useEffect(() => {
+    if (!user?.id) {
+      setPointsBalance(null);
+      return;
+    }
+
+    let active = true;
+    const loadPointsBalance = () => {
+      setPointsLoading(true);
+      void points
+        .summary()
+        .then((res) => {
+          if (active) {
+            setPointsBalance(res.data.credit1);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setPointsBalance(null);
+          }
+        })
+        .finally(() => {
+          if (active) {
+            setPointsLoading(false);
+          }
+        });
+    };
+
+    loadPointsBalance();
+    window.addEventListener(POINTS_BALANCE_CHANGED_EVENT, loadPointsBalance);
+
+    return () => {
+      active = false;
+      window.removeEventListener(
+        POINTS_BALANCE_CHANGED_EVENT,
+        loadPointsBalance
+      );
+    };
+  }, [user?.id, location.pathname]);
+
   const onClick: MenuProps["onClick"] = ({ key }) => {
     if (key === "login_out") {
       confirm({
@@ -92,6 +136,8 @@ export const Header: React.FC = () => {
       setChangePasswordVisiale(true);
     } else if (key === "user_info") {
       setUserInfoVisiale(true);
+    } else if (key === "points") {
+      navigate("/points");
     }
   };
 
@@ -101,6 +147,27 @@ export const Header: React.FC = () => {
       key: "user_info",
       icon: (
         <i className="iconfont icon-icon-12 c-red" style={{ fontSize: 16 }} />
+      ),
+    },
+    {
+      label: (
+        <div className={styles["points-menu-item"]}>
+          <span>积分中心</span>
+          <span className={styles["points-menu-balance"]}>
+            {pointsLoading
+              ? "加载中…"
+              : pointsBalance === null
+              ? "暂不可用"
+              : `${pointsBalance} 积分`}
+          </span>
+        </div>
+      ),
+      key: "points",
+      icon: (
+        <StarOutlined
+          onPointerEnterCapture={undefined}
+          onPointerLeaveCapture={undefined}
+        />
       ),
     },
     {
