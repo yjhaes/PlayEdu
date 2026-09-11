@@ -23,6 +23,8 @@ const StudyPage = lazy(() => import("../pages/study/index"));
 //课程页面
 const CoursePage = lazy(() => import("../pages/course/index"));
 const CoursePlayPage = lazy(() => import("../pages/course/video"));
+const PointsCenterPage = lazy(() => import("../pages/points/index"));
+const PointsRulesPage = lazy(() => import("../pages/points/rules"));
 
 import PrivateRoute from "../components/private-route";
 
@@ -104,6 +106,14 @@ const routes: RouteObject[] = [
           {
             path: "/course/:courseId/hour/:hourId",
             element: <PrivateRoute Component={<CoursePlayPage />} />,
+          },
+          {
+            path: "/points",
+            element: <PrivateRoute Component={<PointsCenterPage />} />,
+          },
+          {
+            path: "/points/rules",
+            element: <PrivateRoute Component={<PointsRulesPage />} />,
           },
         ],
       },

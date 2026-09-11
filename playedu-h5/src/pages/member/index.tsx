@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ImageUploader, Skeleton, Toast, Mask, Image } from "antd-mobile";
 import { useNavigate } from "react-router-dom";
-import { user as member } from "../../api/index";
+import { points as pointApi, user as member } from "../../api/index";
 import { getDepName, studyTimeFormat } from "../../utils/index";
 import { loginAction, logoutAction } from "../../store/user/loginUserSlice";
 import { ImageUploadItem } from "antd-mobile/es/components/image-uploader";
@@ -27,6 +27,8 @@ const MemberPage = () => {
   const [learnTodayMin, setLearnTodayMin] = useState(0);
   const [learnTotalHour, setLearnTotalHour] = useState(0);
   const [learnTotalMin, setLearnTotalMin] = useState(0);
+  const [pointsBalance, setPointsBalance] = useState<number | null>(null);
+  const [pointsLoading, setPointsLoading] = useState(false);
   const user = useSelector((state: any) => state.loginUser.value.user);
   const departments = useSelector(
     (state: any) => state.loginUser.value.departments
@@ -40,7 +42,8 @@ const MemberPage = () => {
 
   useEffect(() => {
     document.title = "我的";
-    getUser();
+    void getUser();
+    void getPointsSummary();
   }, []);
 
   useEffect(() => {
@@ -131,8 +134,21 @@ const MemberPage = () => {
     let res: any = await member.detail();
     if (res) {
       dispatch(loginAction(res.data));
+      setPointsBalance((current) => current ?? res.data.user?.credit1 ?? 0);
       setFileList([]);
       setInit(true);
+    }
+  };
+
+  const getPointsSummary = async () => {
+    setPointsLoading(true);
+    try {
+      const res = await pointApi.summary();
+      setPointsBalance(res.data.credit1);
+    } catch {
+      setPointsBalance((current) => current ?? 0);
+    } finally {
+      setPointsLoading(false);
     }
   };
 
@@ -213,6 +229,36 @@ const MemberPage = () => {
               <strong> {learnTotalMin} </strong>分
             </span>
             <span className={styles["tit"]}>累计学习</span>
+          </div>
+        </div>
+        <div
+          className={styles["points-entry"]}
+          role="button"
+          tabIndex={0}
+          onClick={() => navigate("/points")}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              navigate("/points");
+            }
+          }}
+        >
+          <div className={styles["points-entry-title"]}>
+            <span>积分中心</span>
+            <span className={styles["points-entry-hint"]}>
+              查看流水和兑换码
+            </span>
+          </div>
+          <div className={styles["points-entry-value"]}>
+            {pointsLoading ? (
+              <Skeleton animated style={{ width: 52, height: 22 }} />
+            ) : (
+              <>
+                <strong>{pointsBalance ?? 0}</strong>
+                <span>积分</span>
+              </>
+            )}
+            <span className={styles["points-entry-arrow"]}>›</span>
           </div>
         </div>
         <div className={styles["records-content"]}>

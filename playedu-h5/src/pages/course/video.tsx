@@ -66,6 +66,7 @@ const CoursePlayPage = () => {
   const [learnHourRecord, setLearnHourRecord] =
     useState<LocalUserLearnHourRecordModel>({});
   const [leaseMessage, setLeaseMessage] = useState("");
+  const [earnedPoints, setEarnedPoints] = useState<number | null>(null);
   const playRef = useRef(0);
   const watchRef = useRef(0);
   const totalRef = useRef(0);
@@ -133,6 +134,10 @@ const CoursePlayPage = () => {
             setLeaseMessage("");
           }
         },
+        onEarnedPoints: (points) => {
+          setEarnedPoints(points);
+          Toast.show({ content: `获得 ${points} 积分` });
+        },
         onConflict: () => {
           setLeaseMessage(LEARNING_CONFLICT_MESSAGE);
           pauseForLeaseIssue();
@@ -166,6 +171,7 @@ const CoursePlayPage = () => {
     setLeaseMessage("");
     setPlayingTime(0);
     setWatchedSeconds(0);
+    setEarnedPoints(null);
     getCourse();
     getDetail();
 
@@ -435,6 +441,22 @@ const CoursePlayPage = () => {
           )}
         </div>
       </div>
+      {earnedPoints !== null && (
+        <div className={styles["reward-notice"]} role="status">
+          <span>获得 {earnedPoints} 积分</span>
+          <button type="button" onClick={() => navigate("/points")}>
+            查看积分中心
+          </button>
+          <button
+            type="button"
+            className={styles["reward-close"]}
+            aria-label="关闭积分奖励提示"
+            onClick={() => setEarnedPoints(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
       <div className={styles["chapters-hours-cont"]}>
         {chapters.length === 0 && !hours && <Empty />}
         {chapters.length === 0 && hours && (
