@@ -207,6 +207,24 @@ class HistoricalPointsBackfillServiceIntegrationTest {
     }
 
     @Test
+    void keepsTheHistoricalNoticePendingUntilTheLearnerAcknowledgesIt() {
+        backfillService.resetAndBackfill(true);
+
+        assertThat(summaryService.pendingForDisplay(1))
+                .hasValueSatisfying(
+                        summary -> {
+                            assertThat(summary.completionCount()).isEqualTo(1);
+                            assertThat(summary.pointsAwarded()).isEqualTo(10);
+                        });
+        assertThat(summaryService.pendingForDisplay(1)).isPresent();
+
+        summaryService.acknowledge(1);
+
+        assertThat(summaryService.pendingForDisplay(1)).isEmpty();
+        summaryService.acknowledge(1);
+    }
+
+    @Test
     void refusesToResetLegacyCreditWithoutARecoverableBackupConfirmation() {
         assertThatThrownBy(() -> backfillService.resetAndBackfill(false))
                 .isInstanceOf(RuntimeException.class)

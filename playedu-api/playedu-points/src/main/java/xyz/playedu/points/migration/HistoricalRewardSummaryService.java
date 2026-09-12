@@ -17,10 +17,17 @@ package xyz.playedu.points.migration;
 
 import java.util.Optional;
 
-/** Delivers the historical-reward notice at most once for each learner. */
+/** Stores and acknowledges the aggregate historical-reward notice for each learner. */
 public interface HistoricalRewardSummaryService {
 
     void store(Integer userId, long completionCount, long pointsAwarded);
 
+    /** Reads a pending notice without marking it as acknowledged. */
+    Optional<HistoricalRewardSummary> pendingForDisplay(Integer userId);
+
+    /** Marks the current learner's pending notice as acknowledged, idempotently. */
+    void acknowledge(Integer userId);
+
+    /** Legacy atomic read-and-acknowledge seam used by migration-level callers. */
     Optional<HistoricalRewardSummary> claimForDisplay(Integer userId);
 }

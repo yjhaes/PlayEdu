@@ -20,6 +20,7 @@ import java.util.Date;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import xyz.playedu.common.exception.NotFoundException;
 import xyz.playedu.common.exception.ServiceException;
 import xyz.playedu.common.types.paginate.PaginationResult;
 import xyz.playedu.points.domain.PointCode;
@@ -72,6 +73,19 @@ public class PointRedemptionServiceImpl extends ServiceImpl<PointRedemptionMappe
             return;
         }
         remove(query().getWrapper().eq("user_id", userId));
+    }
+
+    @Override
+    public PointRedemption findForUser(Integer redemptionId, Integer userId)
+            throws NotFoundException {
+        if (redemptionId == null || userId == null) {
+            throw new NotFoundException("兑换记录不存在");
+        }
+        PointRedemption redemption = redemptionMapper.findByIdAndUserId(redemptionId, userId);
+        if (redemption == null) {
+            throw new NotFoundException("兑换记录不存在");
+        }
+        return redemption;
     }
 
     @Override

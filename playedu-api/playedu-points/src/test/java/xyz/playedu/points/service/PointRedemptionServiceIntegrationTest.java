@@ -40,6 +40,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import xyz.playedu.common.exception.NotFoundException;
 import xyz.playedu.common.exception.ServiceException;
 import xyz.playedu.points.domain.PointCodeStatus;
 import xyz.playedu.points.domain.PointLedgerType;
@@ -165,6 +166,17 @@ class PointRedemptionServiceIntegrationTest {
     }
 
     @Test
+    void findsARedemptionOnlyForItsOwningLearner() throws Exception {
+        PointRedemption redemption = pointRedemptionService.redeem(1, 1, "detail-request");
+
+        assertThat(pointRedemptionService.findForUser(redemption.getId(), 1).getId())
+                .isEqualTo(redemption.getId());
+        assertThatThrownBy(() -> pointRedemptionService.findForUser(redemption.getId(), 2))
+                .isInstanceOf(NotFoundException.class)
+                .hasMessage("兑换记录不存在");
+    }
+
+    @Test
     void deliversOnlyOnceForConcurrentRetriesWithTheSameRequestKey() throws Exception {
         int requests = 12;
         ExecutorService executor = Executors.newFixedThreadPool(requests);
@@ -220,6 +232,26 @@ class PointRedemptionServiceIntegrationTest {
         assertThat(balanceOf(1)).isEqualTo(100);
         assertThat(count("SELECT COUNT(*) FROM point_redemptions")).isZero();
         assertThat(count("SELECT COUNT(*) FROM point_ledgers")).isZero();
+    }
+
+    @Test
+    void rollsBackCodeClaimAndDebitWhenRedemptionRecordCannotBeWritten() {
+        jdbcTemplate.execute(
+                "ALTER TABLE point_redemptions ADD CONSTRAINT chk_point_redemption_rollback"
+                        + " CHECK (points_cost < 0)");
+        try {
+            assertThatThrownBy(() -> pointRedemptionService.redeem(1, 1, "transaction-failure"))
+                    .isInstanceOf(Exception.class);
+
+            assertThat(balanceOf(1)).isEqualTo(100);
+            assertThat(count("SELECT COUNT(*) FROM point_redemptions")).isZero();
+            assertThat(count("SELECT COUNT(*) FROM point_ledgers")).isZero();
+            assertThat(countByStatus(PointCodeStatus.DELIVERED)).isZero();
+            assertThat(countByStatus(PointCodeStatus.AVAILABLE)).isEqualTo(2);
+        } finally {
+            jdbcTemplate.execute(
+                    "ALTER TABLE point_redemptions DROP CHECK chk_point_redemption_rollback");
+        }
     }
 
     @Test

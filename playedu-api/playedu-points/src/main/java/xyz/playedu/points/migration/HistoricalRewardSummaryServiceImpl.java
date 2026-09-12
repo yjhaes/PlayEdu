@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.playedu.common.exception.ServiceException;
 
-/** Stores and atomically consumes one aggregate historical-reward notice per learner. */
+/** Stores and acknowledges one aggregate historical-reward notice per learner. */
 @Service
 public class HistoricalRewardSummaryServiceImpl implements HistoricalRewardSummaryService {
 
@@ -55,41 +55,70 @@ public class HistoricalRewardSummaryServiceImpl implements HistoricalRewardSumma
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Optional<HistoricalRewardSummary> pendingForDisplay(Integer userId) {
+        validateUserId(userId);
+        migrationStateService.requireHistoricalBackfillComplete();
+        return findPending(userId, false);
+    }
+
+    @Override
+    @Transactional
+    public void acknowledge(Integer userId) {
+        validateUserId(userId);
+        migrationStateService.requireHistoricalBackfillComplete();
+        acknowledgePending(userId);
+    }
+
+    @Override
     @Transactional
     public Optional<HistoricalRewardSummary> claimForDisplay(Integer userId) {
-        if (userId == null) {
-            throw new ServiceException("领取历史积分汇总必须提供学员ID");
-        }
+        validateUserId(userId);
         migrationStateService.requireHistoricalBackfillComplete();
 
+        Optional<HistoricalRewardSummary> pending = findPending(userId, true);
+        if (pending.isEmpty()) {
+            return Optional.empty();
+        }
+
+        if (acknowledgePending(userId) != 1) {
+            throw new ServiceException("历史积分汇总状态更新失败");
+        }
+        return pending;
+    }
+
+    private int acknowledgePending(Integer userId) {
+        return jdbcTemplate.update(
+                """
+                UPDATE point_historical_reward_summaries
+                SET acknowledged_at = CURRENT_TIMESTAMP
+                WHERE user_id = ? AND acknowledged_at IS NULL
+                """,
+                userId);
+    }
+
+    private Optional<HistoricalRewardSummary> findPending(Integer userId, boolean forUpdate) {
+        String lockClause = forUpdate ? " FOR UPDATE" : "";
         List<HistoricalRewardSummary> summaries =
                 jdbcTemplate.query(
                         """
                         SELECT user_id, completion_count, points_awarded
                         FROM point_historical_reward_summaries
                         WHERE user_id = ? AND acknowledged_at IS NULL
-                        FOR UPDATE
-                        """,
+                        """
+                                + lockClause,
                         (resultSet, rowNumber) ->
                                 new HistoricalRewardSummary(
                                         resultSet.getInt("user_id"),
                                         resultSet.getLong("completion_count"),
                                         resultSet.getLong("points_awarded")),
                         userId);
-        if (summaries.isEmpty()) {
-            return Optional.empty();
-        }
+        return summaries.stream().findFirst();
+    }
 
-        if (jdbcTemplate.update(
-                        """
-                        UPDATE point_historical_reward_summaries
-                        SET acknowledged_at = CURRENT_TIMESTAMP
-                        WHERE user_id = ? AND acknowledged_at IS NULL
-                        """,
-                        userId)
-                != 1) {
-            throw new ServiceException("历史积分汇总状态更新失败");
+    private void validateUserId(Integer userId) {
+        if (userId == null) {
+            throw new ServiceException("历史积分汇总必须提供学员ID");
         }
-        return Optional.of(summaries.get(0));
     }
 }

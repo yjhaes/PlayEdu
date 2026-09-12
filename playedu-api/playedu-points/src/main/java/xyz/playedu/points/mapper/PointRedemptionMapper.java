@@ -95,6 +95,14 @@ public interface PointRedemptionMapper extends BaseMapper<PointRedemption> {
             @Param("endTime") String endTime);
 
     @Select(
+            "SELECT id, user_id, product_id, code_id, request_key, points_cost, created_at "
+                    + "FROM point_redemptions "
+                    + "WHERE id = #{redemptionId} AND user_id = #{userId}")
+    @ResultMap("pointRedemptionResultMap")
+    PointRedemption findByIdAndUserId(
+            @Param("redemptionId") Integer redemptionId, @Param("userId") Integer userId);
+
+    @Select(
             """
             SELECT id, user_id, product_id, code_id, request_key, points_cost, created_at
             FROM point_redemptions

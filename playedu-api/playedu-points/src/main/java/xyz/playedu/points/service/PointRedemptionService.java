@@ -16,6 +16,7 @@
 package xyz.playedu.points.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import xyz.playedu.common.exception.NotFoundException;
 import xyz.playedu.common.types.paginate.PaginationResult;
 import xyz.playedu.points.domain.PointRedemption;
 
@@ -24,6 +25,9 @@ public interface PointRedemptionService extends IService<PointRedemption> {
 
     /** Removes all redemption records owned by a learner as part of physical deletion. */
     void removeByUserId(Integer userId);
+
+    /** Finds a redemption only when it belongs to the supplied learner. */
+    PointRedemption findForUser(Integer redemptionId, Integer userId) throws NotFoundException;
 
     PaginationResult<PointRedemption> paginate(
             int page,
