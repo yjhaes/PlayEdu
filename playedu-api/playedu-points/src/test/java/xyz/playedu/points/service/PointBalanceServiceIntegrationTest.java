@@ -40,7 +40,10 @@ import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import xyz.playedu.points.domain.PointLedgerType;
+import xyz.playedu.points.exception.PointBalanceException;
 import xyz.playedu.points.service.impl.PointBalanceServiceImpl;
+import xyz.playedu.points.types.PointBalanceChange;
+import xyz.playedu.points.types.PointBalanceChangeResult;
 
 @SpringBootTest(classes = PointBalanceServiceIntegrationTest.TestApplication.class)
 @Testcontainers(disabledWithoutDocker = true)

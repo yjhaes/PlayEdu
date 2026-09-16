@@ -33,10 +33,10 @@ import xyz.playedu.points.mapper.PointCodeMapper;
 import xyz.playedu.points.mapper.PointProductMapper;
 import xyz.playedu.points.mapper.PointRedemptionMapper;
 import xyz.playedu.points.migration.PointsFeatureGate;
-import xyz.playedu.points.service.PointBalanceChange;
-import xyz.playedu.points.service.PointBalanceChangeResult;
 import xyz.playedu.points.service.PointBalanceService;
 import xyz.playedu.points.service.PointRedemptionService;
+import xyz.playedu.points.types.PointBalanceChange;
+import xyz.playedu.points.types.PointBalanceChangeResult;
 
 /** Default persistence service for completed points redemptions. */
 @Service

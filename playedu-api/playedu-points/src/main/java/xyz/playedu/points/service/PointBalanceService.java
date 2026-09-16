@@ -15,6 +15,9 @@
  */
 package xyz.playedu.points.service;
 
+import xyz.playedu.points.types.PointBalanceChange;
+import xyz.playedu.points.types.PointBalanceChangeResult;
+
 /** The only domain entry point for changing a learner's current points balance. */
 public interface PointBalanceService {
 

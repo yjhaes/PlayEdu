@@ -20,12 +20,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import xyz.playedu.points.domain.PointLedger;
 import xyz.playedu.points.domain.PointLedgerType;
+import xyz.playedu.points.exception.PointBalanceException;
 import xyz.playedu.points.mapper.PointBalanceMapper;
 import xyz.playedu.points.mapper.PointLedgerMapper;
-import xyz.playedu.points.service.PointBalanceChange;
-import xyz.playedu.points.service.PointBalanceChangeResult;
-import xyz.playedu.points.service.PointBalanceException;
 import xyz.playedu.points.service.PointBalanceService;
+import xyz.playedu.points.types.PointBalanceChange;
+import xyz.playedu.points.types.PointBalanceChangeResult;
 
 /** Transactional engine for changes to {@code users.credit1}. */
 @Service

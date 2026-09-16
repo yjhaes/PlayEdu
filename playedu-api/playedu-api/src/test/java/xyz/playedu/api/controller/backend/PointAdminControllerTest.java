@@ -39,13 +39,13 @@ import xyz.playedu.common.bus.BackendBus;
 import xyz.playedu.common.context.BCtx;
 import xyz.playedu.points.domain.PointLedger;
 import xyz.playedu.points.domain.PointLedgerType;
-import xyz.playedu.points.service.PointBalanceChange;
-import xyz.playedu.points.service.PointBalanceChangeResult;
 import xyz.playedu.points.service.PointBalanceService;
 import xyz.playedu.points.service.PointCodeService;
 import xyz.playedu.points.service.PointLedgerService;
 import xyz.playedu.points.service.PointProductService;
 import xyz.playedu.points.service.PointRedemptionService;
+import xyz.playedu.points.types.PointBalanceChange;
+import xyz.playedu.points.types.PointBalanceChangeResult;
 
 class PointAdminControllerTest {
 

@@ -24,10 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 import xyz.playedu.common.exception.ServiceException;
 import xyz.playedu.points.domain.PointLedgerType;
 import xyz.playedu.points.mapper.PointBalanceMapper;
-import xyz.playedu.points.service.PointBalanceChange;
-import xyz.playedu.points.service.PointBalanceChangeResult;
 import xyz.playedu.points.service.PointBalanceService;
 import xyz.playedu.points.service.PointSourceKeys;
+import xyz.playedu.points.types.PointBalanceChange;
+import xyz.playedu.points.types.PointBalanceChangeResult;
 
 /** Resets legacy credit and idempotently awards currently persisted course completions. */
 @Service

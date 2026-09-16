@@ -13,14 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package xyz.playedu.points.service;
+package xyz.playedu.points.types;
 
-import xyz.playedu.points.domain.PointLedger;
+import xyz.playedu.points.domain.PointLedgerType;
 
-/** The committed ledger result, including whether this request created it. */
-public record PointBalanceChangeResult(PointLedger ledger, boolean applied) {
-
-    public int balanceAfter() {
-        return ledger.getBalanceAfter();
-    }
-}
+/** A single idempotent request to change a learner's points balance. */
+public record PointBalanceChange(
+        Integer userId,
+        Integer delta,
+        PointLedgerType type,
+        String sourceKey,
+        String reason,
+        Integer operatorAdminId,
+        boolean operatorIsSuperAdmin) {}

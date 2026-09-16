@@ -25,10 +25,10 @@ import xyz.playedu.course.domain.UserCourseHourRecord;
 import xyz.playedu.course.event.DailyLearningDurationEventPublisher;
 import xyz.playedu.course.event.DailyLearningDurationIncrement;
 import xyz.playedu.points.domain.PointLedgerType;
-import xyz.playedu.points.service.PointBalanceChange;
-import xyz.playedu.points.service.PointBalanceChangeResult;
 import xyz.playedu.points.service.PointBalanceService;
 import xyz.playedu.points.service.PointSourceKeys;
+import xyz.playedu.points.types.PointBalanceChange;
+import xyz.playedu.points.types.PointBalanceChangeResult;
 
 /** Persists all MySQL facts created by one accepted course-hour progress interval. */
 @Service

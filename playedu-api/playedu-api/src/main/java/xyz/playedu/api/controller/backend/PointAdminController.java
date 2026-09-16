@@ -47,14 +47,14 @@ import xyz.playedu.points.domain.PointLedgerType;
 import xyz.playedu.points.domain.PointProduct;
 import xyz.playedu.points.domain.PointProductStatus;
 import xyz.playedu.points.domain.PointRedemption;
-import xyz.playedu.points.service.PointBalanceChange;
-import xyz.playedu.points.service.PointBalanceChangeResult;
 import xyz.playedu.points.service.PointBalanceService;
 import xyz.playedu.points.service.PointCodeService;
 import xyz.playedu.points.service.PointLedgerService;
 import xyz.playedu.points.service.PointProductService;
 import xyz.playedu.points.service.PointRedemptionService;
 import xyz.playedu.points.service.PointSourceKeys;
+import xyz.playedu.points.types.PointBalanceChange;
+import xyz.playedu.points.types.PointBalanceChangeResult;
 import xyz.playedu.points.types.PointCodeImportResult;
 
 /** Super-admin-only operations for points, products and voucher-code inventory. */
