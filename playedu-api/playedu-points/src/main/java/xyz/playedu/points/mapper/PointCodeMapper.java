@@ -21,9 +21,7 @@ import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Result;
 import org.apache.ibatis.annotations.ResultMap;
-import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 import xyz.playedu.points.domain.PointCode;
@@ -32,28 +30,6 @@ import xyz.playedu.points.domain.PointCodeStatus;
 /** Mapper for encrypted voucher-code inventory. */
 public interface PointCodeMapper extends BaseMapper<PointCode> {
 
-    @Select(
-            """
-            <script>
-            SELECT id, product_id, code_ciphertext, code_digest, status, delivered_at,
-                   created_at, updated_at
-            FROM point_codes
-            <where>
-              <if test="productId != null">
-                AND product_id = #{productId}
-              </if>
-              <if test="status != null">
-                AND status = #{status}
-              </if>
-              <if test="codeDigest != null and codeDigest != ''">
-                AND code_digest = #{codeDigest}
-              </if>
-            </where>
-            ORDER BY id DESC
-            LIMIT #{offset}, #{limit}
-            </script>
-            """)
-    @ResultMap("pointCodeResultMap")
     List<PointCode> paginate(
             @Param("productId") Integer productId,
             @Param("status") PointCodeStatus status,
@@ -61,24 +37,6 @@ public interface PointCodeMapper extends BaseMapper<PointCode> {
             @Param("offset") int offset,
             @Param("limit") int limit);
 
-    @Select(
-            """
-            <script>
-            SELECT COUNT(*)
-            FROM point_codes
-            <where>
-              <if test="productId != null">
-                AND product_id = #{productId}
-              </if>
-              <if test="status != null">
-                AND status = #{status}
-              </if>
-              <if test="codeDigest != null and codeDigest != ''">
-                AND code_digest = #{codeDigest}
-              </if>
-            </where>
-            </script>
-            """)
     long paginateCount(
             @Param("productId") Integer productId,
             @Param("status") PointCodeStatus status,
@@ -91,18 +49,7 @@ public interface PointCodeMapper extends BaseMapper<PointCode> {
             FROM point_codes
             WHERE code_digest = #{digest}
             """)
-    @Results(
-            id = "pointCodeResultMap",
-            value = {
-                @Result(column = "id", property = "id"),
-                @Result(column = "product_id", property = "productId"),
-                @Result(column = "code_ciphertext", property = "codeCiphertext"),
-                @Result(column = "code_digest", property = "codeDigest"),
-                @Result(column = "status", property = "status", javaType = PointCodeStatus.class),
-                @Result(column = "delivered_at", property = "deliveredAt"),
-                @Result(column = "created_at", property = "createdAt"),
-                @Result(column = "updated_at", property = "updatedAt")
-            })
+    @ResultMap("pointCodeResultMap")
     PointCode findByDigest(@Param("digest") String digest);
 
     @Select(

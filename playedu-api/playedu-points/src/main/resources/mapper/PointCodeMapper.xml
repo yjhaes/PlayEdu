@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="xyz.playedu.points.mapper.PointCodeMapper">
+
+    <resultMap id="pointCodeResultMap" type="xyz.playedu.points.domain.PointCode">
+        <result column="id" property="id"/>
+        <result column="product_id" property="productId"/>
+        <result column="code_ciphertext" property="codeCiphertext"/>
+        <result column="code_digest" property="codeDigest"/>
+        <result column="status" property="status" javaType="xyz.playedu.points.domain.PointCodeStatus"/>
+        <result column="delivered_at" property="deliveredAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="paginate" resultMap="pointCodeResultMap">
+        SELECT id, product_id, code_ciphertext, code_digest, status, delivered_at,
+               created_at, updated_at
+        FROM point_codes
+        <where>
+          <if test="productId != null">
+            AND product_id = #{productId}
+          </if>
+          <if test="status != null">
+            AND status = #{status}
+          </if>
+          <if test="codeDigest != null and codeDigest != ''">
+            AND code_digest = #{codeDigest}
+          </if>
+        </where>
+        ORDER BY id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="paginateCount" resultType="long">
+        SELECT COUNT(*)
+        FROM point_codes
+        <where>
+          <if test="productId != null">
+            AND product_id = #{productId}
+          </if>
+          <if test="status != null">
+            AND status = #{status}
+          </if>
+          <if test="codeDigest != null and codeDigest != ''">
+            AND code_digest = #{codeDigest}
+          </if>
+        </where>
+    </select>
+</mapper>

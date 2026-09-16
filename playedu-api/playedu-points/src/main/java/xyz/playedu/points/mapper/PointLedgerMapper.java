@@ -20,9 +20,7 @@ import java.util.List;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Options;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Result;
 import org.apache.ibatis.annotations.ResultMap;
-import org.apache.ibatis.annotations.Results;
 import org.apache.ibatis.annotations.Select;
 import xyz.playedu.points.domain.PointLedger;
 import xyz.playedu.points.domain.PointLedgerType;
@@ -30,38 +28,6 @@ import xyz.playedu.points.domain.PointLedgerType;
 /** Mapper for immutable points ledger entries. */
 public interface PointLedgerMapper extends BaseMapper<PointLedger> {
 
-    @Select(
-            """
-            <script>
-            SELECT id, user_id, delta, balance_after, type, source_key, reason,
-                   operator_admin_id, created_at
-            FROM point_ledgers
-            <where>
-              <if test="userId != null">
-                AND user_id = #{userId}
-              </if>
-              <if test="type != null">
-                AND type = #{type}
-              </if>
-              <if test="operatorAdminId != null">
-                AND operator_admin_id = #{operatorAdminId}
-              </if>
-              <if test="keyword != null and keyword != ''">
-                AND (source_key LIKE CONCAT('%', #{keyword}, '%')
-                     OR reason LIKE CONCAT('%', #{keyword}, '%'))
-              </if>
-              <if test="startTime != null and startTime != ''">
-                AND created_at &gt;= #{startTime}
-              </if>
-              <if test="endTime != null and endTime != ''">
-                AND created_at &lt;= #{endTime}
-              </if>
-            </where>
-            ORDER BY created_at DESC, id DESC
-            LIMIT #{offset}, #{limit}
-            </script>
-            """)
-    @ResultMap("pointLedgerResultMap")
     List<PointLedger> paginate(
             @Param("userId") Integer userId,
             @Param("type") PointLedgerType type,
@@ -72,34 +38,6 @@ public interface PointLedgerMapper extends BaseMapper<PointLedger> {
             @Param("offset") int offset,
             @Param("limit") int limit);
 
-    @Select(
-            """
-            <script>
-            SELECT COUNT(*)
-            FROM point_ledgers
-            <where>
-              <if test="userId != null">
-                AND user_id = #{userId}
-              </if>
-              <if test="type != null">
-                AND type = #{type}
-              </if>
-              <if test="operatorAdminId != null">
-                AND operator_admin_id = #{operatorAdminId}
-              </if>
-              <if test="keyword != null and keyword != ''">
-                AND (source_key LIKE CONCAT('%', #{keyword}, '%')
-                     OR reason LIKE CONCAT('%', #{keyword}, '%'))
-              </if>
-              <if test="startTime != null and startTime != ''">
-                AND created_at &gt;= #{startTime}
-              </if>
-              <if test="endTime != null and endTime != ''">
-                AND created_at &lt;= #{endTime}
-              </if>
-            </where>
-            </script>
-            """)
     long paginateCount(
             @Param("userId") Integer userId,
             @Param("type") PointLedgerType type,
@@ -115,19 +53,7 @@ public interface PointLedgerMapper extends BaseMapper<PointLedger> {
             FROM point_ledgers
             WHERE source_key = #{sourceKey}
             """)
-    @Results(
-            id = "pointLedgerResultMap",
-            value = {
-                @Result(column = "id", property = "id"),
-                @Result(column = "user_id", property = "userId"),
-                @Result(column = "delta", property = "delta"),
-                @Result(column = "balance_after", property = "balanceAfter"),
-                @Result(column = "type", property = "type", javaType = PointLedgerType.class),
-                @Result(column = "source_key", property = "sourceKey"),
-                @Result(column = "reason", property = "reason"),
-                @Result(column = "operator_admin_id", property = "operatorAdminId"),
-                @Result(column = "created_at", property = "createdAt")
-            })
+    @ResultMap("pointLedgerResultMap")
     PointLedger findBySourceKey(@Param("sourceKey") String sourceKey);
 
     @Select(
