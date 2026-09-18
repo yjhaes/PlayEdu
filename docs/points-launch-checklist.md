@@ -1,21 +1,45 @@
-# 积分首发迁移清单
+# 积分首发清单
 
-积分入口、兑换接口和积分中心必须在历史迁移完成前保持关闭。应用默认不执行迁移，迁移由 `PLAYEDU_POINTS_MIGRATION_MODE` 显式控制。
+项目尚未上线且没有业务历史数据，积分余额从零开始。无需执行旧积分清零、历史课程补发或迁移状态确认，数据库结构初始化后积分中心和兑换接口即可使用。
 
-## 上线前
+## 上线前与验收
 
-1. 停止会写入课程学习事实的应用实例，或确认所有实例都处于维护状态。
-2. 使用数据库平台的可恢复备份能力完成全库备份，并验证备份可以恢复到隔离实例。备份文件、校验值和恢复验证记录应留在发布记录中。
-3. 先以 `PLAYEDU_POINTS_MIGRATION_MODE=dry-run` 启动一次，记录日志中的聚合字段：旧 `credit1` 非零学员数、旧值总额、历史完成学员数、课程完成数和预计补发总额。干跑不输出个人数据，也不写入数据库。
-4. 核对干跑结果后，确认 `PLAYEDU_POINTS_MIGRATION_BACKUP_CONFIRMED=true` 仅表示第 2 步的可恢复备份已经完成。
+1. 使用现有数据库结构初始化机制创建积分流水、商品、兑换码和兑换记录表及相关约束。
+2. 配置兑换码专用加密密钥及其他上线配置。
+3. 超级管理员创建试运行商品，价格设为 50 积分，并导入 20 个兑换码，验证库存和重复导入报告。
+4. 验证新学员积分余额为零，首次完成课程获得 10 分，重学或重复请求不再次奖励。
+5. 验证 PC/H5 积分余额一致、正常兑换交付兑换码、余额不足和售罄时不扣分。
+6. 验证普通管理员无法执行积分运营操作，余额与流水、库存与兑换记录对账一致。
 
-## 执行与校验
+## 上线后监控与对账
 
-1. 使用 `PLAYEDU_POINTS_MIGRATION_MODE=execute` 启动单个迁移实例。缺少备份确认时，进程会拒绝执行清零。
-2. 迁移会在同一事务中丢弃旧 `users.credit1`、按当前 `user_course_records.is_finished = 1` 的唯一学员/课程组合补发 10 分、写入一次性汇总提示并记录完成状态。失败时事务回滚，可安全重试。
-3. 检查迁移状态已完成、非完成课程的旧余额为零、每个完成组合只有一个 `course-completion:<user_id>:<course_id>` 流水、余额与流水一致，并确认汇总提示只能领取一次。
-4. 只有上述检查完成后，才开放兑换商品、兑换接口和 H5/PC 积分中心。迁移状态闸门会在状态未完成时拒绝兑换。
+上线后至少在首日持续观察以下指标，并在发布记录中保存结果：余额与流水差异、重复导入拒绝数、兑换失败数、兑换成功数、库存剩余数和已发放数。日志与报表只允许使用用户 ID、商品 ID、兑换请求键和结果状态等非敏感字段，不得输出兑换码原码、密文或密钥。
 
-## 异常处理
+可用下面的只读 SQL 检查余额与流水是否一致；`mismatched_user_count` 必须为 0：
 
-迁移失败或校验不通过时，不开放积分入口；先保留日志和数据库状态，修复原因后重新执行。若需要恢复旧学分，使用第 2 步验证过的备份恢复，不通过积分流水伪造旧值。
+```sql
+SELECT COUNT(*) AS mismatched_user_count
+FROM users u
+LEFT JOIN (
+    SELECT user_id, COALESCE(SUM(delta), 0) AS ledger_balance
+    FROM point_ledgers
+    GROUP BY user_id
+) l ON l.user_id = u.id
+WHERE COALESCE(u.credit1, 0) <> COALESCE(l.ledger_balance, 0);
+```
+
+库存对账应同时查看商品的可用兑换码数量和兑换记录数量，避免只依赖缓存或前端显示：
+
+```sql
+SELECT
+    p.id AS product_id,
+    p.status,
+    SUM(c.status = 'AVAILABLE') AS available_code_count,
+    SUM(c.status = 'DELIVERED') AS delivered_code_count
+FROM point_products p
+LEFT JOIN point_codes c ON c.product_id = p.id
+GROUP BY p.id, p.status
+ORDER BY p.id;
+```
+
+发现差异、重复导入、兑换失败突增或库存异常时，暂停兑换相关服务，保留日志与数据库状态，定位原因并修复后再恢复服务。

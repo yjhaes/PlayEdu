@@ -18,7 +18,6 @@ package xyz.playedu.points.domain;
 /** The immutable reasons that can change a learner's points balance. */
 public enum PointLedgerType {
     COURSE_COMPLETION,
-    HISTORICAL_COURSE_COMPLETION,
     REDEMPTION,
     MANUAL_ADJUSTMENT
 }

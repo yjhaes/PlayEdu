@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "row": 9,
+  "directions": [
+    {"label": "000", "expected": "up", "verdict": "pass", "observed": "Eyes and face point toward the image top while the lower body stays planted.", "reason": "Cardinal up anchor and first pose family are clear at pet size."},
+    {"label": "022.5", "expected": "up-right", "verdict": "pass", "observed": "Upward gaze gains a small screen-right head and eye shift.", "reason": "Intermediate step continues smoothly from 000 toward right."},
+    {"label": "045", "expected": "up-right", "verdict": "pass", "observed": "Eyes and face are visibly between up and screen-right.", "reason": "Diagonal pose remains in the intended quadrant."},
+    {"label": "067.5", "expected": "up-right", "verdict": "pass", "observed": "Rightward face turn is stronger while the gaze remains above center.", "reason": "Even transition into the right cardinal is readable."},
+    {"label": "090", "expected": "screen-right", "verdict": "pass", "observed": "Profile, eyes, and nose point clearly to the viewer's screen-right.", "reason": "Right cardinal is unmistakable and matches the approved anchor."},
+    {"label": "112.5", "expected": "down-right", "verdict": "pass", "observed": "Right-facing head begins to lower toward the down-right quadrant.", "reason": "Pose continues the clockwise arc without reversal."},
+    {"label": "135", "expected": "down-right", "verdict": "pass", "observed": "Face and eyes sit clearly in the down-right diagonal family.", "reason": "Diagonal preserves identity and gradual head turn."},
+    {"label": "157.5", "expected": "down-right", "verdict": "pass", "observed": "Downward cue dominates with a remaining screen-right component.", "reason": "Boundary pose flows evenly into the approved 180 down anchor."}
+  ],
+  "registration": "pass",
+  "edge_check": "pass",
+  "continuity": "pass on normal-size registered row; full-loop metric review follows after row 10 assembly"
+}

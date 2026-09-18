@@ -1,0 +1,10 @@
+playedu-api\playedu-points\src\test\java\xyz\playedu\points\service\PointBalanceServiceIntegrationTest.java
+playedu-api\playedu-api\src\test\java\xyz\playedu\api\controller\backend\PointAdminControllerTest.java
+playedu-api\playedu-course\src\main\java\xyz\playedu\course\service\LearningFactPersistenceService.java
+playedu-api\playedu-points\src\main\java\xyz\playedu\points\service\PointBalanceException.java
+playedu-api\playedu-points\src\main\java\xyz\playedu\points\service\PointBalanceChangeResult.java
+playedu-api\playedu-points\src\main\java\xyz\playedu\points\service\PointBalanceChange.java
+playedu-api\playedu-points\src\main\java\xyz\playedu\points\service\PointBalanceService.java
+playedu-api\playedu-points\src\main\java\xyz\playedu\points\service\impl\PointRedemptionServiceImpl.java
+playedu-api\playedu-points\src\main\java\xyz\playedu\points\service\impl\PointBalanceServiceImpl.java
+playedu-api\playedu-api\src\main\java\xyz\playedu\api\controller\backend\PointAdminController.java

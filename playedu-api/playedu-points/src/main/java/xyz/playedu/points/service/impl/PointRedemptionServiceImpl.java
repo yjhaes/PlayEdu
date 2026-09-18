@@ -32,7 +32,6 @@ import xyz.playedu.points.mapper.PointBalanceMapper;
 import xyz.playedu.points.mapper.PointCodeMapper;
 import xyz.playedu.points.mapper.PointProductMapper;
 import xyz.playedu.points.mapper.PointRedemptionMapper;
-import xyz.playedu.points.migration.PointsFeatureGate;
 import xyz.playedu.points.service.PointBalanceService;
 import xyz.playedu.points.service.PointRedemptionService;
 import xyz.playedu.points.types.PointBalanceChange;
@@ -50,21 +49,18 @@ public class PointRedemptionServiceImpl extends ServiceImpl<PointRedemptionMappe
     private final PointCodeMapper codeMapper;
     private final PointBalanceMapper balanceMapper;
     private final PointBalanceService balanceService;
-    private final PointsFeatureGate pointsFeatureGate;
 
     public PointRedemptionServiceImpl(
             PointRedemptionMapper redemptionMapper,
             PointProductMapper productMapper,
             PointCodeMapper codeMapper,
             PointBalanceMapper balanceMapper,
-            PointBalanceService balanceService,
-            PointsFeatureGate pointsFeatureGate) {
+            PointBalanceService balanceService) {
         this.redemptionMapper = redemptionMapper;
         this.productMapper = productMapper;
         this.codeMapper = codeMapper;
         this.balanceMapper = balanceMapper;
         this.balanceService = balanceService;
-        this.pointsFeatureGate = pointsFeatureGate;
     }
 
     @Override
@@ -114,7 +110,6 @@ public class PointRedemptionServiceImpl extends ServiceImpl<PointRedemptionMappe
     @Transactional
     public PointRedemption redeem(Integer userId, Integer productId, String requestKey) {
         validateRequest(userId, productId, requestKey);
-        pointsFeatureGate.requireOpen();
 
         PointRedemption existing = redemptionMapper.findByUserIdAndRequestKey(userId, requestKey);
         if (existing != null) {

@@ -47,7 +47,6 @@ import xyz.playedu.course.service.impl.UserCourseHourRecordServiceImpl;
 import xyz.playedu.course.service.impl.UserCourseRecordServiceImpl;
 import xyz.playedu.course.service.impl.UserLearnDurationRecordServiceImpl;
 import xyz.playedu.course.service.impl.UserLearnDurationStatsServiceImpl;
-import xyz.playedu.points.migration.PointsFeatureGate;
 import xyz.playedu.points.service.impl.PointBalanceServiceImpl;
 import xyz.playedu.points.service.impl.PointLedgerServiceImpl;
 import xyz.playedu.points.service.impl.PointRedemptionServiceImpl;
@@ -394,7 +393,11 @@ class UserDeletionServiceIntegrationTest {
     @SpringBootConfiguration
     @EnableAutoConfiguration
     @EnableTransactionManagement
-    @MapperScan({"xyz.playedu.common.mapper", "xyz.playedu.course.mapper", "xyz.playedu.points.mapper"})
+    @MapperScan({
+        "xyz.playedu.common.mapper",
+        "xyz.playedu.course.mapper",
+        "xyz.playedu.points.mapper"
+    })
     @Import({
         UserDeletionServiceImpl.class,
         UserServiceImpl.class,
@@ -416,19 +419,6 @@ class UserDeletionServiceIntegrationTest {
         @Bean
         DailyLearningRankingService dailyLearningRankingService() {
             return mock(DailyLearningRankingService.class);
-        }
-
-        @Bean
-        PointsFeatureGate pointsFeatureGate() {
-            return new PointsFeatureGate() {
-                @Override
-                public boolean isOpen() {
-                    return true;
-                }
-
-                @Override
-                public void requireOpen() {}
-            };
         }
     }
 }

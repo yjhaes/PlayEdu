@@ -47,27 +47,4 @@ public interface PointBalanceMapper {
             """)
     int applyCredit1DeltaIfNonNegative(
             @Param("userId") Integer userId, @Param("delta") Integer delta);
-
-    /** Discards the pre-points-system credit values before historical rewards are applied. */
-    @Update(
-            """
-            UPDATE users
-            SET credit1 = 0, updated_at = CURRENT_TIMESTAMP
-            WHERE credit1 <> 0
-            """)
-    int resetLegacyCredit1();
-
-    /** Rebuilds only already-recorded points facts after the legacy balance reset. */
-    @Update(
-            """
-            UPDATE users AS target
-            LEFT JOIN (
-                SELECT user_id, COALESCE(SUM(delta), 0) AS ledger_balance
-                FROM point_ledgers
-                GROUP BY user_id
-            ) AS ledger ON ledger.user_id = target.id
-            SET target.credit1 = COALESCE(ledger.ledger_balance, 0),
-                target.updated_at = CURRENT_TIMESTAMP
-            """)
-    int rebuildCredit1FromPointLedger();
 }

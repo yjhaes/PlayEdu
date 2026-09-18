@@ -13,7 +13,6 @@ import { useNavigate } from "react-router-dom";
 import { points } from "../../api";
 import type {
   DeliveredRedemption,
-  HistoricalRewardSummary,
   PointLedger,
   PointProduct,
   PointRedemption,
@@ -28,7 +27,6 @@ const PAGE_SIZE = 10;
 
 const LEDGER_TYPE_LABELS: Record<string, string> = {
   COURSE_COMPLETION: "课程完成奖励",
-  HISTORICAL_COURSE_COMPLETION: "历史课程补发",
   REDEMPTION: "兑换商品",
   MANUAL_ADJUSTMENT: "人工调整",
 };
@@ -126,65 +124,13 @@ const PointsCenterPage = () => {
   const [deliveredRedemption, setDeliveredRedemption] =
     useState<DeliveredRedemption | null>(null);
   const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null);
-  const historicalNoticeShown = useRef(false);
   const loadedTabs = useRef<Set<PointsTab>>(new Set());
 
-  const acknowledgeHistoricalReward = async () => {
-    try {
-      await points.acknowledgeHistoricalReward();
-      setSummary((current) =>
-        current
-          ? {
-              ...current,
-              historical_reward_summary_pending: false,
-            }
-          : current
-      );
-    } catch (error) {
-      historicalNoticeShown.current = false;
-      setCenterError(errorMessage(error, "历史补发提示确认失败，请重试"));
-      Toast.show({
-        content: errorMessage(error, "历史补发提示确认失败，请稍后重试"),
-      });
-    }
-  };
-
-  const showHistoricalRewardNotice = (
-    historicalSummary: HistoricalRewardSummary
-  ) => {
-    historicalNoticeShown.current = true;
-    void Dialog.alert({
-      title: "历史课程奖励到账",
-      content: (
-        <div className={styles["dialog-content"]}>
-          <div>
-            已根据积分上线前已完成的课程，为你补发历史课程完成奖励。
-          </div>
-          <strong>
-            {historicalSummary.completion_count} 门课程，共获得{" "}
-            {historicalSummary.points_awarded} 积分
-          </strong>
-          <div>历史补发只展示一次，积分不会因时间经过而失效。</div>
-        </div>
-      ),
-      confirmText: "我知道了",
-      onConfirm: acknowledgeHistoricalReward,
-    });
-  };
-
-  const loadSummary = async (showHistoricalNotice: boolean) => {
+  const loadSummary = async () => {
     setSummaryLoading(true);
     try {
       const response = await points.summary();
       setSummary(response.data);
-      if (
-        showHistoricalNotice &&
-        response.data.historical_reward_summary_pending &&
-        response.data.historical_reward_summary &&
-        !historicalNoticeShown.current
-      ) {
-        showHistoricalRewardNotice(response.data.historical_reward_summary);
-      }
     } catch (error) {
       setCenterError(errorMessage(error, "积分中心加载失败，请稍后重试"));
     } finally {
@@ -258,7 +204,7 @@ const PointsCenterPage = () => {
 
   useEffect(() => {
     document.title = "积分中心";
-    void loadSummary(true);
+    void loadSummary();
   }, []);
 
   useEffect(() => {
@@ -271,13 +217,13 @@ const PointsCenterPage = () => {
 
   const refresh = async () => {
     setCenterError("");
-    await loadSummary(!historicalNoticeShown.current);
+    await loadSummary();
     await loadTab(activeTab, 1);
   };
 
   const retryCurrentTab = () => {
     setCenterError("");
-    void loadSummary(!historicalNoticeShown.current);
+    void loadSummary();
     loadedTabs.current.add(activeTab);
     void loadTab(activeTab, 1);
   };
@@ -324,7 +270,7 @@ const PointsCenterPage = () => {
         ? loadRedemptions(1)
         : Promise.resolve();
       await Promise.all([
-        loadSummary(false),
+        loadSummary(),
         loadProducts(1),
         refreshRedemptions,
       ]);

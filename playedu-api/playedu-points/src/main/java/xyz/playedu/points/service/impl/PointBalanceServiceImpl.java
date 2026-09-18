@@ -128,7 +128,7 @@ public class PointBalanceServiceImpl implements PointBalanceService {
             throw new PointBalanceException("积分流水类型不能为空");
         }
         switch (change.type()) {
-            case COURSE_COMPLETION, HISTORICAL_COURSE_COMPLETION -> requirePositiveDelta(change);
+            case COURSE_COMPLETION -> requirePositiveDelta(change);
             case REDEMPTION -> requireNegativeDelta(change);
             case MANUAL_ADJUSTMENT -> validateManualAdjustment(change);
         }

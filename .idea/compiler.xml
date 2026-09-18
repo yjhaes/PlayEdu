@@ -11,6 +11,7 @@
         <module name="playedu-system" />
         <module name="playedu-api" />
         <module name="playedu-common" />
+        <module name="playedu-points" />
         <module name="playedu-course" />
       </profile>
     </annotationProcessing>
@@ -21,6 +22,7 @@
       <module name="playedu-api" options="-parameters" />
       <module name="playedu-common" options="-parameters" />
       <module name="playedu-course" options="-parameters" />
+      <module name="playedu-points" options="-parameters" />
       <module name="playedu-resource" options="-parameters" />
       <module name="playedu-system" options="-parameters" />
     </option>

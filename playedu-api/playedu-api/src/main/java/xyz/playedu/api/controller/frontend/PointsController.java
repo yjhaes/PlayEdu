@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import org.apache.commons.collections4.MapUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,9 +43,6 @@ import xyz.playedu.points.domain.PointLedger;
 import xyz.playedu.points.domain.PointLedgerType;
 import xyz.playedu.points.domain.PointProduct;
 import xyz.playedu.points.domain.PointRedemption;
-import xyz.playedu.points.migration.HistoricalRewardSummary;
-import xyz.playedu.points.migration.HistoricalRewardSummaryService;
-import xyz.playedu.points.migration.PointsFeatureGate;
 import xyz.playedu.points.service.PointCodeService;
 import xyz.playedu.points.service.PointLedgerService;
 import xyz.playedu.points.service.PointProductService;
@@ -69,8 +65,6 @@ public class PointsController {
                     "积分不能购买、转让、提现或兑换现金等价物。");
 
     private final UserService userService;
-    private final PointsFeatureGate pointsFeatureGate;
-    private final HistoricalRewardSummaryService historicalRewardSummaryService;
     private final PointProductService productService;
     private final PointCodeService codeService;
     private final PointLedgerService ledgerService;
@@ -79,15 +73,11 @@ public class PointsController {
     @Autowired
     public PointsController(
             UserService userService,
-            PointsFeatureGate pointsFeatureGate,
-            HistoricalRewardSummaryService historicalRewardSummaryService,
             PointProductService productService,
             PointCodeService codeService,
             PointLedgerService ledgerService,
             PointRedemptionService redemptionService) {
         this.userService = userService;
-        this.pointsFeatureGate = pointsFeatureGate;
-        this.historicalRewardSummaryService = historicalRewardSummaryService;
         this.productService = productService;
         this.codeService = codeService;
         this.ledgerService = ledgerService;
@@ -96,7 +86,6 @@ public class PointsController {
 
     @GetMapping("/summary")
     public JsonResponse summary() {
-        pointsFeatureGate.requireOpen();
         Integer userId = currentLearnerId();
         User user = userService.find(userId);
         if (user == null) {
@@ -104,26 +93,13 @@ public class PointsController {
         }
         ensureUnlocked(user);
 
-        Optional<HistoricalRewardSummary> pendingSummary =
-                historicalRewardSummaryService.pendingForDisplay(userId);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("credit1", user.getCredit1());
-        data.put("historical_reward_summary", pendingSummary.orElse(null));
-        data.put("historical_reward_summary_pending", pendingSummary.isPresent());
         return JsonResponse.data(data);
-    }
-
-    @PostMapping({"/historical-reward-summary/acknowledge", "/historical-reward-summary/ack"})
-    public JsonResponse acknowledgeHistoricalReward() {
-        pointsFeatureGate.requireOpen();
-        Integer userId = currentLearnerId();
-        historicalRewardSummaryService.acknowledge(userId);
-        return JsonResponse.data(Map.of("acknowledged", true));
     }
 
     @GetMapping({"/ledgers/index", "/ledgers"})
     public JsonResponse ledgers(@RequestParam HashMap<String, Object> params) {
-        pointsFeatureGate.requireOpen();
         Integer userId = currentLearnerId();
         PaginationResult<PointLedger> result =
                 ledgerService.paginate(
@@ -140,7 +116,6 @@ public class PointsController {
 
     @GetMapping({"/products/index", "/products"})
     public JsonResponse products(@RequestParam HashMap<String, Object> params) {
-        pointsFeatureGate.requireOpen();
         currentLearnerId();
         // Both on-sale and off-sale products remain visible; the status and exact inventory
         // tell the learner whether a new redemption can currently be made.
@@ -149,7 +124,6 @@ public class PointsController {
 
     @GetMapping("/products/{id}")
     public JsonResponse product(@PathVariable Integer id) throws NotFoundException {
-        pointsFeatureGate.requireOpen();
         currentLearnerId();
         PointProduct product = productService.findOrFail(id);
         product.setAvailableCount(productService.availableCount(id));
@@ -162,12 +136,13 @@ public class PointsController {
             @RequestBody(required = false) PointRedemptionRequest request,
             @RequestHeader(name = "Idempotency-Key", required = false) String headerRequestKey)
             throws NotFoundException {
-        pointsFeatureGate.requireOpen();
         Integer userId = currentLearnerId();
-        Integer productId =
-                pathProductId != null
-                        ? pathProductId
-                        : request == null ? null : request.getProductId();
+        Integer productId = null;
+        if (pathProductId != null) {
+            productId = pathProductId;
+        } else if (request != null) {
+            productId = request.getProductId();
+        }
         if (productId == null) {
             throw new ServiceException("兑换必须提供商品ID");
         }
@@ -190,7 +165,6 @@ public class PointsController {
 
     @GetMapping({"/redemptions/index", "/redemptions"})
     public JsonResponse redemptions(@RequestParam HashMap<String, Object> params) {
-        pointsFeatureGate.requireOpen();
         Integer userId = currentLearnerId();
         PaginationResult<PointRedemption> result =
                 redemptionService.paginate(
@@ -200,7 +174,6 @@ public class PointsController {
 
     @GetMapping({"/redemptions/{id}", "/redemptions/{id}/detail"})
     public JsonResponse redemption(@PathVariable Integer id) throws NotFoundException {
-        pointsFeatureGate.requireOpen();
         Integer userId = currentLearnerId();
         PointRedemption redemption = redemptionService.findForUser(id, userId);
         return JsonResponse.data(deliveredRedemptionData(redemption));
@@ -208,7 +181,6 @@ public class PointsController {
 
     @GetMapping({"/rules", "/rules/index"})
     public JsonResponse rules() {
-        pointsFeatureGate.requireOpen();
         currentLearnerId();
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("course_completion_reward_points", COURSE_COMPLETION_REWARD_POINTS);

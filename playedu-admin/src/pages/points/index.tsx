@@ -57,7 +57,6 @@ type Redemption = {
 const ledgerTypes = [
   ["", "全部流水"],
   ["COURSE_COMPLETION", "课程完成"],
-  ["HISTORICAL_COURSE_COMPLETION", "历史补发"],
   ["REDEMPTION", "兑换扣分"],
   ["MANUAL_ADJUSTMENT", "人工调整"],
 ];

@@ -1,0 +1,61 @@
+{
+  "ok": true,
+  "strip": "C:\\Users\\86198\\Desktop\\play\\.scratch\\hatch-pet\\denia-v2\\run\\decoded\\look-cardinals.png",
+  "directions": [
+    "000",
+    "090",
+    "180",
+    "270"
+  ],
+  "errors": [],
+  "anchors": [
+    {
+      "direction": "000",
+      "source_box": [
+        0,
+        0,
+        544,
+        723
+      ],
+      "used_pixels": 140839,
+      "edge_pixels": 0,
+      "output": "C:\\Users\\86198\\Desktop\\play\\.scratch\\hatch-pet\\denia-v2\\run\\decoded\\look-anchors\\000.png"
+    },
+    {
+      "direction": "090",
+      "source_box": [
+        544,
+        0,
+        1088,
+        723
+      ],
+      "used_pixels": 126006,
+      "edge_pixels": 0,
+      "output": "C:\\Users\\86198\\Desktop\\play\\.scratch\\hatch-pet\\denia-v2\\run\\decoded\\look-anchors\\090.png"
+    },
+    {
+      "direction": "180",
+      "source_box": [
+        1088,
+        0,
+        1631,
+        723
+      ],
+      "used_pixels": 137572,
+      "edge_pixels": 0,
+      "output": "C:\\Users\\86198\\Desktop\\play\\.scratch\\hatch-pet\\denia-v2\\run\\decoded\\look-anchors\\180.png"
+    },
+    {
+      "direction": "270",
+      "source_box": [
+        1631,
+        0,
+        2175,
+        723
+      ],
+      "used_pixels": 131266,
+      "edge_pixels": 0,
+      "output": "C:\\Users\\86198\\Desktop\\play\\.scratch\\hatch-pet\\denia-v2\\run\\decoded\\look-anchors\\270.png"
+    }
+  ]
+}

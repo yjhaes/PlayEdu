@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "reviewed_at": "2026-09-09T11:00:00Z",
+  "reviewed_by": "parent visual inspection with three independent blind reviewers",
+  "directions": [
+    {"label": "000", "expected": "up", "verdict": "pass", "observed": "Broadly frontal head with eyes, eyelids, and chin directed toward the top edge.", "horizontal_evidence": "No horizontal axis required; face remains centered.", "vertical_evidence": "Pupils and upper face are visibly raised toward up."},
+    {"label": "022.5", "expected": "up-right", "verdict": "pass", "observed": "Upward pose with a small screen-right gaze and head shift.", "horizontal_evidence": "Face center and hair lead slightly toward screen-right.", "vertical_evidence": "Eyes remain above the neutral line."},
+    {"label": "045", "expected": "up-right", "verdict": "pass", "observed": "Clear diagonal between up and screen-right.", "horizontal_evidence": "Nose/face plane moves right of the centered up pose.", "vertical_evidence": "Eyes and chin remain above center."},
+    {"label": "067.5", "expected": "up-right", "verdict": "pass", "observed": "Near-right pose with the gaze still above center.", "horizontal_evidence": "Right-facing cheek and nose direction are visible.", "vertical_evidence": "Eye line remains slightly upward before the right cardinal."},
+    {"label": "090", "expected": "screen-right", "verdict": "pass", "observed": "Unmistakable right-facing profile and screen-right gaze.", "horizontal_evidence": "Nose tip, eyes, and face plane point to the viewer's right.", "vertical_evidence": "No vertical axis required; head is near level."},
+    {"label": "112.5", "expected": "down-right", "verdict": "pass", "observed": "Right-facing head begins a smooth downward turn.", "horizontal_evidence": "Profile remains clearly on the screen-right side.", "vertical_evidence": "Eyes and chin move below the right-cardinal level."},
+    {"label": "135", "expected": "down-right", "verdict": "pass", "observed": "Readable down-right diagonal with stable lower body.", "horizontal_evidence": "Face and nose remain on the screen-right arc.", "vertical_evidence": "Eye line and chin are visibly below center."},
+    {"label": "157.5", "expected": "down-right", "verdict": "pass", "observed": "Downward cue dominates while the face still points right.", "horizontal_evidence": "Remaining profile and hair occlusion preserve the right component.", "vertical_evidence": "Eyes and chin are clearly lowered; pose flows into 180."},
+    {"label": "180", "expected": "down", "verdict": "pass", "observed": "Broadly frontal head with eyes, eyelids, and chin directed toward the bottom edge.", "horizontal_evidence": "No horizontal axis required; face returns broadly centered.", "vertical_evidence": "Pupils, eyelids, and chin visibly point down."},
+    {"label": "202.5", "expected": "down-left", "verdict": "pass", "observed": "Downward pose begins a smooth screen-left turn.", "horizontal_evidence": "Face plane and nose move left of the down anchor.", "vertical_evidence": "Eyes and chin remain below center."},
+    {"label": "225", "expected": "down-left", "verdict": "pass", "observed": "Clear diagonal between down and screen-left.", "horizontal_evidence": "Left-facing cheek and hair occlusion are visible.", "vertical_evidence": "Eye line remains below center."},
+    {"label": "247.5", "expected": "down-left", "verdict": "pass", "observed": "Near-left profile with a remaining downward gaze.", "horizontal_evidence": "Nose and visible face plane point screen-left.", "vertical_evidence": "Chin and eyes remain slightly lowered before 270."},
+    {"label": "270", "expected": "screen-left", "verdict": "pass", "observed": "Unmistakable left-facing profile and screen-left gaze.", "horizontal_evidence": "Nose tip, eyes, and face plane point to the viewer's left.", "vertical_evidence": "No vertical axis required; head is near level."},
+    {"label": "292.5", "expected": "up-left", "verdict": "pass", "observed": "Left-facing pose begins a smooth upward turn.", "horizontal_evidence": "Profile remains on the screen-left arc.", "vertical_evidence": "Eyes and chin rise above the left-cardinal level."},
+    {"label": "315", "expected": "up-left", "verdict": "pass", "observed": "Readable up-left diagonal with consistent costume and scale.", "horizontal_evidence": "Face and nose remain left of center.", "vertical_evidence": "Eye line is visibly above center."},
+    {"label": "337.5", "expected": "up-left", "verdict": "pass", "observed": "Near-up pose with a remaining screen-left component, ready to join 000.", "horizontal_evidence": "Subtle left-facing face plane and hair arrangement remain visible.", "vertical_evidence": "Eyes and chin are raised toward up; boundary flows into 000."}
+  ],
+  "review_warnings": [
+    "Continuity metrics flag transparent rows in the lower costume area; visual review identifies intentional negative space between boots/hem and no accidental interior seam.",
+    "Metric outliers at 157.5->180 and 337.5->000 are reviewed as modest cross-row pose-family changes with no conspicuous snap or identity break at normal display size."
+  ]
+}

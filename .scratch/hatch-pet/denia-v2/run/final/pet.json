@@ -1,0 +1,8 @@
+{
+  "id": "denia",
+  "displayName": "Denia",
+  "description": "A compact Codex digital pet based on Denia, a pink-haired fantasy girl with ornate blue, black, white, pink, and red details.",
+  "spriteVersionNumber": 2,
+  "spritesheetPath": "spritesheet.webp",
+  "kind": "person"
+}

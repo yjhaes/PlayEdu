@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "reviewed_by": "parent",
+  "review_basis": "normal-size labeled look-directions sheet and ordered-loop review",
+  "directions": [
+    {
+      "direction": "000",
+      "verdict": "pass",
+      "expected": "up",
+      "observed": "pupils and eye line point toward the top while the face stays broadly frontal",
+      "horizontal": {"verdict":"pass", "observed":"frontal; no horizontal component required", "evidence":"nose remains near head center"},
+      "vertical": {"verdict":"pass", "observed":"up", "evidence":"both purple irises sit high in the original eye apertures and the chin lifts slightly"},
+      "reason": "Unmistakable upward gaze with preserved humanoid identity."
+    },
+    {
+      "direction": "022.5",
+      "verdict": "warning",
+      "expected": "up-right",
+      "observed": "slightly screen-right with eyes still high",
+      "horizontal": {"verdict":"warning", "observed":"screen-right", "evidence":"nose and pupils move just right of head center"},
+      "vertical": {"verdict":"pass", "observed":"up", "evidence":"eye line remains visibly above center"},
+      "reason": "Near-vertical diagonal cue is subtle but follows the clockwise arc."
+    },
+    {
+      "direction": "045",
+      "verdict": "pass",
+      "expected": "up-right",
+      "observed": "nose and pupils screen-right with raised eye line",
+      "horizontal": {"verdict":"pass", "observed":"screen-right", "evidence":"nose tip and pupils are right of head center"},
+      "vertical": {"verdict":"pass", "observed":"up", "evidence":"pupils remain in the upper eye apertures"},
+      "reason": "Clear upper-right interpolation."
+    },
+    {
+      "direction": "067.5",
+      "verdict": "warning",
+      "expected": "up-right",
+      "observed": "strong screen-right turn with a residual upward eye angle",
+      "horizontal": {"verdict":"pass", "observed":"screen-right", "evidence":"nose tip and face surface are clearly right of center"},
+      "vertical": {"verdict":"warning", "observed":"up", "evidence":"pupils and eyelids remain slightly above the horizontal midpoint"},
+      "reason": "Approaches the right cardinal naturally; vertical cue is modest at pet size."
+    },
+    {
+      "direction": "090",
+      "verdict": "pass",
+      "expected": "right",
+      "observed": "screen-right profile with nose and pupils on the right side",
+      "horizontal": {"verdict":"pass", "observed":"screen-right", "evidence":"nose tip, visible eye, and cheek plane face the screen-right edge"},
+      "vertical": {"verdict":"pass", "observed":"no vertical component required", "evidence":"cardinal horizontal anchor"},
+      "reason": "Unmistakable screen-right cardinal."
+    },
+    {
+      "direction": "112.5",
+      "verdict": "pass",
+      "expected": "down-right",
+      "observed": "screen-right turn with lowered pupils and chin",
+      "horizontal": {"verdict":"pass", "observed":"screen-right", "evidence":"nose tip remains right of head center"},
+      "vertical": {"verdict":"pass", "observed":"down", "evidence":"pupils and eyelids sit below the eye midline"},
+      "reason": "Clear lower-right interpolation."
+    },
+    {
+      "direction": "135",
+      "verdict": "pass",
+      "expected": "down-right",
+      "observed": "nose and pupils screen-right with visibly lowered gaze",
+      "horizontal": {"verdict":"pass", "observed":"screen-right", "evidence":"face plane and nose lead toward screen-right"},
+      "vertical": {"verdict":"pass", "observed":"down", "evidence":"eyes and chin angle toward the bottom"},
+      "reason": "Coherent diagonal midpoint."
+    },
+    {
+      "direction": "157.5",
+      "verdict": "warning",
+      "expected": "down-right",
+      "observed": "rightward face with eyes nearly at the down cardinal",
+      "horizontal": {"verdict":"pass", "observed":"screen-right", "evidence":"nose tip remains just right of head center"},
+      "vertical": {"verdict":"pass", "observed":"down", "evidence":"pupils and chin are clearly low"},
+      "reason": "Near-180 cue is readable; the source-to-cardinal transition is a reviewed continuity warning, not a visible reversal."
+    },
+    {
+      "direction": "180",
+      "verdict": "pass",
+      "expected": "down",
+      "observed": "broadly frontal face with eyes and chin directed to the bottom",
+      "horizontal": {"verdict":"pass", "observed":"frontal; no horizontal component required", "evidence":"nose remains near head center"},
+      "vertical": {"verdict":"pass", "observed":"down", "evidence":"both complete eyes are lowered and the chin tucks"},
+      "reason": "Unmistakable downward cardinal."
+    },
+    {
+      "direction": "202.5",
+      "verdict": "pass",
+      "expected": "down-left",
+      "observed": "slight screen-left turn with lowered eye line",
+      "horizontal": {"verdict":"pass", "observed":"screen-left", "evidence":"nose and pupils shift left of head center"},
+      "vertical": {"verdict":"pass", "observed":"down", "evidence":"eyes remain below center"},
+      "reason": "Smooth lower-left continuation from the down cardinal."
+    },
+    {
+      "direction": "225",
+      "verdict": "pass",
+      "expected": "down-left",
+      "observed": "nose and pupils screen-left with clear downward gaze",
+      "horizontal": {"verdict":"pass", "observed":"screen-left", "evidence":"face plane leads toward screen-left"},
+      "vertical": {"verdict":"pass", "observed":"down", "evidence":"pupils and chin remain low"},
+      "reason": "Clear lower-left interpolation."
+    },
+    {
+      "direction": "247.5",
+      "verdict": "pass",
+      "expected": "down-left",
+      "observed": "strong screen-left turn with a residual downward eye angle",
+      "horizontal": {"verdict":"pass", "observed":"screen-left", "evidence":"nose tip and cheek plane are left of center"},
+      "vertical": {"verdict":"pass", "observed":"down", "evidence":"eye line remains below midpoint"},
+      "reason": "Natural approach to the left cardinal."
+    },
+    {
+      "direction": "270",
+      "verdict": "pass",
+      "expected": "left",
+      "observed": "screen-left profile with nose and pupils on the left side",
+      "horizontal": {"verdict":"pass", "observed":"screen-left", "evidence":"nose tip, visible eye, and cheek plane face the screen-left edge"},
+      "vertical": {"verdict":"pass", "observed":"no vertical component required", "evidence":"cardinal horizontal anchor"},
+      "reason": "Unmistakable screen-left cardinal."
+    },
+    {
+      "direction": "292.5",
+      "verdict": "warning",
+      "expected": "up-left",
+      "observed": "screen-left head turn with a modest upward eye angle",
+      "horizontal": {"verdict":"pass", "observed":"screen-left", "evidence":"nose and pupils remain left of head center"},
+      "vertical": {"verdict":"warning", "observed":"up", "evidence":"pupils rise slightly above the horizontal midpoint"},
+      "reason": "Intermediate upward cue is subtle but the labeled ordered loop remains coherent."
+    },
+    {
+      "direction": "315",
+      "verdict": "pass",
+      "expected": "up-left",
+      "observed": "screen-left turn with raised eye line",
+      "horizontal": {"verdict":"pass", "observed":"screen-left", "evidence":"nose tip and face plane lead left"},
+      "vertical": {"verdict":"pass", "observed":"up", "evidence":"pupils sit above eye center"},
+      "reason": "Clear upper-left interpolation."
+    },
+    {
+      "direction": "337.5",
+      "verdict": "warning",
+      "expected": "up-left",
+      "observed": "nearly frontal/up with a small screen-left head and eye bias",
+      "horizontal": {"verdict":"warning", "observed":"screen-left", "evidence":"nose and pupils are slightly left of head center"},
+      "vertical": {"verdict":"pass", "observed":"up", "evidence":"eye line is lifted toward the top"},
+      "reason": "Near-000 horizontal cue is subtle, but it does not reverse and flows into the approved up anchor."
+    }
+  ],
+  "accepted_continuity_warnings": [
+    "090->112.5 and 157.5->180 have higher local pixel differences without a visible snap or semantic break.",
+    "270->292.5 has a 9px center shift in the metric report, but the labeled loop shows a natural profile-to-three-quarter transition.",
+    "337.5->000 has a higher boundary diff, but the loop remains readable and returns to the approved up cardinal."
+  ]
+}

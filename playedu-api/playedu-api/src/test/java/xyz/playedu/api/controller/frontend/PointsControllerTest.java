@@ -26,7 +26,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,9 +43,6 @@ import xyz.playedu.points.domain.PointLedgerType;
 import xyz.playedu.points.domain.PointProduct;
 import xyz.playedu.points.domain.PointProductStatus;
 import xyz.playedu.points.domain.PointRedemption;
-import xyz.playedu.points.migration.HistoricalRewardSummary;
-import xyz.playedu.points.migration.HistoricalRewardSummaryService;
-import xyz.playedu.points.migration.PointsFeatureGate;
 import xyz.playedu.points.service.PointCodeService;
 import xyz.playedu.points.service.PointLedgerService;
 import xyz.playedu.points.service.PointProductService;
@@ -55,8 +51,6 @@ import xyz.playedu.points.service.PointRedemptionService;
 class PointsControllerTest {
 
     private UserService userService;
-    private PointsFeatureGate pointsFeatureGate;
-    private HistoricalRewardSummaryService historicalRewardSummaryService;
     private PointProductService productService;
     private PointCodeService codeService;
     private PointLedgerService ledgerService;
@@ -66,8 +60,6 @@ class PointsControllerTest {
     @BeforeEach
     void setUp() {
         userService = mock(UserService.class);
-        pointsFeatureGate = mock(PointsFeatureGate.class);
-        historicalRewardSummaryService = mock(HistoricalRewardSummaryService.class);
         productService = mock(PointProductService.class);
         codeService = mock(PointCodeService.class);
         ledgerService = mock(PointLedgerService.class);
@@ -76,8 +68,6 @@ class PointsControllerTest {
                 MockMvcBuilders.standaloneSetup(
                                 new PointsController(
                                         userService,
-                                        pointsFeatureGate,
-                                        historicalRewardSummaryService,
                                         productService,
                                         codeService,
                                         ledgerService,
@@ -97,51 +87,16 @@ class PointsControllerTest {
     }
 
     @Test
-    void returnsTheCurrentBalanceAndLeavesTheHistoricalNoticePendingUntilAcknowledged()
-            throws Exception {
+    void returnsTheCurrentBalanceWithoutMigration() throws Exception {
         User user = new User();
         user.setId(7);
         user.setCredit1(20);
         when(userService.find(7)).thenReturn(user);
-        when(historicalRewardSummaryService.pendingForDisplay(7))
-                .thenReturn(Optional.of(new HistoricalRewardSummary(7, 2, 20)));
 
         mockMvc.perform(get("/api/v1/points/summary"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.credit1").value(20))
-                .andExpect(jsonPath("$.data.historical_reward_summary_pending").value(true))
-                .andExpect(jsonPath("$.data.historical_reward_summary.completion_count").value(2))
-                .andExpect(jsonPath("$.data.historical_reward_summary.points_awarded").value(20));
-
-        verify(pointsFeatureGate).requireOpen();
-        verify(historicalRewardSummaryService).pendingForDisplay(7);
-    }
-
-    @Test
-    void returnsNoHistoricalNoticeAfterItHasAlreadyBeenAcknowledged() throws Exception {
-        User user = new User();
-        user.setId(7);
-        user.setCredit1(0);
-        when(userService.find(7)).thenReturn(user);
-        when(historicalRewardSummaryService.pendingForDisplay(7)).thenReturn(Optional.empty());
-
-        mockMvc.perform(get("/api/v1/points/summary"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.credit1").value(0))
-                .andExpect(jsonPath("$.data.historical_reward_summary_pending").value(false))
-                .andExpect(jsonPath("$.data.historical_reward_summary").doesNotExist());
-    }
-
-    @Test
-    void acknowledgesTheHistoricalNoticeForTheCurrentLearner() throws Exception {
-        mockMvc.perform(post("/api/v1/points/historical-reward-summary/acknowledge"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0))
-                .andExpect(jsonPath("$.data.acknowledged").value(true));
-
-        verify(pointsFeatureGate).requireOpen();
-        verify(historicalRewardSummaryService).acknowledge(7);
+                .andExpect(jsonPath("$.data.credit1").value(20));
     }
 
     @Test
@@ -291,8 +246,7 @@ class PointsControllerTest {
 
     @Test
     void rejectsAnotherLearnersRedemptionAtTheApiBoundary() throws Exception {
-        when(redemptionService.findForUser(11, 7))
-                .thenThrow(new NotFoundException("兑换记录不存在"));
+        when(redemptionService.findForUser(11, 7)).thenThrow(new NotFoundException("兑换记录不存在"));
 
         mockMvc.perform(get("/api/v1/points/redemptions/11"))
                 .andExpect(status().isOk())

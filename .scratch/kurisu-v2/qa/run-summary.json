@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "spriteVersionNumber": 2,
+  "run_dir": "C:\\Users\\86198\\Desktop\\play\\.scratch\\kurisu-v2",
+  "spritesheet": "C:\\Users\\86198\\Desktop\\play\\.scratch\\kurisu-v2\\final\\spritesheet-extended.webp",
+  "validation": "C:\\Users\\86198\\Desktop\\play\\.scratch\\kurisu-v2\\final\\validation-extended.json",
+  "installed_validation": "C:\\Users\\86198\\Desktop\\play\\.scratch\\kurisu-v2\\qa\\installed-validation.json",
+  "chroma_despill": "C:\\Users\\86198\\Desktop\\play\\.scratch\\kurisu-v2\\qa\\chroma-despill-extended.json",
+  "contact_sheet": "C:\\Users\\86198\\Desktop\\play\\.scratch\\kurisu-v2\\qa\\contact-sheet-extended.png",
+  "direction_sheet": "C:\\Users\\86198\\Desktop\\play\\.scratch\\kurisu-v2\\qa\\look-directions.png",
+  "direction_semantics": "C:\\Users\\86198\\Desktop\\play\\.scratch\\kurisu-v2\\qa\\direction-semantics.json",
+  "blind_direction_validation": "C:\\Users\\86198\\Desktop\\play\\.scratch\\kurisu-v2\\qa\\direction-blind-validation.json",
+  "continuity": "C:\\Users\\86198\\Desktop\\play\\.scratch\\kurisu-v2\\qa\\look-continuity.json",
+  "review": "C:\\Users\\86198\\Desktop\\play\\.scratch\\kurisu-v2\\qa\\review.json",
+  "package": "C:\\Users\\86198\\.codex\\pets\\kurisu",
+  "visual_qa": "pass",
+  "visual_qa_note": "Standard rows preserved from the validated existing atlas; 16 look cells are identity-consistent, cardinal-correct, and form a readable clockwise loop. Continuity metric warnings were reviewed as minor with no visible snap or reversal."
+}

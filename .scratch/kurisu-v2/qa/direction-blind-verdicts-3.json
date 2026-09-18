@@ -1,0 +1,18 @@
+{
+  "pairs": [
+    {"pair":"horizontal-1","A":"ambiguous","B":"ambiguous","reason":"Intermediate diagonal horizontal cue is subtle at normal size."},
+    {"pair":"horizontal-2","A":"ambiguous","B":"ambiguous","reason":"Intermediate diagonal horizontal cue is subtle at normal size."},
+    {"pair":"horizontal-3","A":"ambiguous","B":"ambiguous","reason":"Intermediate diagonal horizontal cue is subtle at normal size."},
+    {"pair":"horizontal-4","A":"screen-left","B":"screen-right","reason":"A has the nose and visible face turned to screen-left; B is the opposing screen-right profile."},
+    {"pair":"horizontal-5","A":"ambiguous","B":"ambiguous","reason":"Intermediate diagonal horizontal cue is subtle at normal size."},
+    {"pair":"horizontal-6","A":"ambiguous","B":"ambiguous","reason":"Intermediate diagonal horizontal cue is subtle at normal size."},
+    {"pair":"horizontal-7","A":"ambiguous","B":"ambiguous","reason":"Intermediate diagonal horizontal cue is subtle at normal size."},
+    {"pair":"vertical-1","A":"up","B":"down","reason":"A's eyes and chin aim upward; B's eyes and chin aim downward."},
+    {"pair":"vertical-2","A":"ambiguous","B":"ambiguous","reason":"Intermediate diagonal vertical cue is subtle at normal size."},
+    {"pair":"vertical-3","A":"ambiguous","B":"ambiguous","reason":"Intermediate diagonal vertical cue is subtle at normal size."},
+    {"pair":"vertical-4","A":"ambiguous","B":"ambiguous","reason":"Intermediate diagonal vertical cue is subtle at normal size."},
+    {"pair":"vertical-5","A":"ambiguous","B":"ambiguous","reason":"Intermediate diagonal vertical cue is subtle at normal size."},
+    {"pair":"vertical-6","A":"ambiguous","B":"ambiguous","reason":"Intermediate diagonal vertical cue is subtle at normal size."},
+    {"pair":"vertical-7","A":"ambiguous","B":"ambiguous","reason":"Intermediate diagonal vertical cue is subtle at normal size."}
+  ]
+}

@@ -15,7 +15,7 @@
  */
 package xyz.playedu.points.service;
 
-/** Stable natural keys shared by online and historical points producers. */
+/** Stable natural keys for points producers. */
 public final class PointSourceKeys {
 
     private PointSourceKeys() {}

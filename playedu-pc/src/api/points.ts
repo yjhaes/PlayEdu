@@ -11,7 +11,6 @@ export function notifyPointsBalanceChanged(): void {
 
 export type PointLedgerType =
   | "COURSE_COMPLETION"
-  | "HISTORICAL_COURSE_COMPLETION"
   | "REDEMPTION"
   | "MANUAL_ADJUSTMENT";
 
@@ -28,16 +27,8 @@ export interface PointsPage<T> {
   total: number;
 }
 
-export interface HistoricalRewardSummary {
-  user_id: number;
-  completion_count: number;
-  points_awarded: number;
-}
-
 export interface PointsSummary {
   credit1: number;
-  historical_reward_summary: HistoricalRewardSummary | null;
-  historical_reward_summary_pending: boolean;
 }
 
 export interface PointLedger {
@@ -85,13 +76,6 @@ export interface PointsRules {
 export function summary() {
   return client.get<PointsApiResponse<PointsSummary>>(
     "/api/v1/points/summary",
-    {}
-  );
-}
-
-export function acknowledgeHistoricalReward() {
-  return client.post<PointsApiResponse<{ acknowledged: boolean }>>(
-    "/api/v1/points/historical-reward-summary/acknowledge",
     {}
   );
 }

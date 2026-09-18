@@ -59,8 +59,7 @@ public class PointCodeServiceImpl implements PointCodeService {
             int page, int size, Integer productId, PointCodeStatus status, String code) {
         int pageSize = normalizedPageSize(size);
         int offset = pageOffset(page, pageSize);
-        String codeDigest =
-                code == null || code.isBlank() ? null : cryptoService.digest(code);
+        String codeDigest = code == null || code.isBlank() ? null : cryptoService.digest(code);
         List<PointCode> codes =
                 codeMapper.paginate(productId, status, codeDigest, offset, pageSize);
         if (codes == null) {

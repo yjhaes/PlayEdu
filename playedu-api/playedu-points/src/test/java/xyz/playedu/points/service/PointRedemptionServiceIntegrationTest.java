@@ -32,7 +32,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -45,7 +44,6 @@ import xyz.playedu.common.exception.ServiceException;
 import xyz.playedu.points.domain.PointCodeStatus;
 import xyz.playedu.points.domain.PointLedgerType;
 import xyz.playedu.points.domain.PointRedemption;
-import xyz.playedu.points.migration.PointsFeatureGate;
 import xyz.playedu.points.service.impl.PointBalanceServiceImpl;
 import xyz.playedu.points.service.impl.PointRedemptionServiceImpl;
 
@@ -345,19 +343,5 @@ class PointRedemptionServiceIntegrationTest {
     @EnableAutoConfiguration
     @MapperScan("xyz.playedu.points.mapper")
     @Import({PointBalanceServiceImpl.class, PointRedemptionServiceImpl.class})
-    static class TestApplication {
-
-        @Bean
-        PointsFeatureGate pointsFeatureGate() {
-            return new PointsFeatureGate() {
-                @Override
-                public boolean isOpen() {
-                    return true;
-                }
-
-                @Override
-                public void requireOpen() {}
-            };
-        }
-    }
+    static class TestApplication {}
 }

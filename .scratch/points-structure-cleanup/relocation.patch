@@ -1,0 +1,110 @@
+--- a/playedu-api/playedu-points/src/test/java/xyz/playedu/points/service/PointBalanceServiceIntegrationTest.java
++++ b/playedu-api/playedu-points/src/test/java/xyz/playedu/points/service/PointBalanceServiceIntegrationTest.java
+@@ -40,7 +40,10 @@
+ import org.testcontainers.junit.jupiter.Container;
+ import org.testcontainers.junit.jupiter.Testcontainers;
+ import xyz.playedu.points.domain.PointLedgerType;
++import xyz.playedu.points.exception.PointBalanceException;
+ import xyz.playedu.points.service.impl.PointBalanceServiceImpl;
++import xyz.playedu.points.types.PointBalanceChange;
++import xyz.playedu.points.types.PointBalanceChangeResult;
+ 
+ @SpringBootTest(classes = PointBalanceServiceIntegrationTest.TestApplication.class)
+ @Testcontainers(disabledWithoutDocker = true)
+--- a/playedu-api/playedu-api/src/test/java/xyz/playedu/api/controller/backend/PointAdminControllerTest.java
++++ b/playedu-api/playedu-api/src/test/java/xyz/playedu/api/controller/backend/PointAdminControllerTest.java
+@@ -39,13 +39,13 @@
+ import xyz.playedu.common.context.BCtx;
+ import xyz.playedu.points.domain.PointLedger;
+ import xyz.playedu.points.domain.PointLedgerType;
+-import xyz.playedu.points.service.PointBalanceChange;
+-import xyz.playedu.points.service.PointBalanceChangeResult;
+ import xyz.playedu.points.service.PointBalanceService;
+ import xyz.playedu.points.service.PointCodeService;
+ import xyz.playedu.points.service.PointLedgerService;
+ import xyz.playedu.points.service.PointProductService;
+ import xyz.playedu.points.service.PointRedemptionService;
++import xyz.playedu.points.types.PointBalanceChange;
++import xyz.playedu.points.types.PointBalanceChangeResult;
+ 
+ class PointAdminControllerTest {
+ 
+--- a/playedu-api/playedu-course/src/main/java/xyz/playedu/course/service/LearningFactPersistenceService.java
++++ b/playedu-api/playedu-course/src/main/java/xyz/playedu/course/service/LearningFactPersistenceService.java
+@@ -25,10 +25,10 @@
+ import xyz.playedu.course.event.DailyLearningDurationEventPublisher;
+ import xyz.playedu.course.event.DailyLearningDurationIncrement;
+ import xyz.playedu.points.domain.PointLedgerType;
+-import xyz.playedu.points.service.PointBalanceChange;
+-import xyz.playedu.points.service.PointBalanceChangeResult;
+ import xyz.playedu.points.service.PointBalanceService;
+ import xyz.playedu.points.service.PointSourceKeys;
++import xyz.playedu.points.types.PointBalanceChange;
++import xyz.playedu.points.types.PointBalanceChangeResult;
+ 
+ /** Persists all MySQL facts created by one accepted course-hour progress interval. */
+ @Service
+--- a/playedu-api/playedu-points/src/main/java/xyz/playedu/points/service/PointBalanceService.java
++++ b/playedu-api/playedu-points/src/main/java/xyz/playedu/points/service/PointBalanceService.java
+@@ -15,6 +15,9 @@
+  */
+ package xyz.playedu.points.service;
+ 
++import xyz.playedu.points.types.PointBalanceChange;
++import xyz.playedu.points.types.PointBalanceChangeResult;
++
+ /** The only domain entry point for changing a learner's current points balance. */
+ public interface PointBalanceService {
+ 
+--- a/playedu-api/playedu-points/src/main/java/xyz/playedu/points/service/impl/PointRedemptionServiceImpl.java
++++ b/playedu-api/playedu-points/src/main/java/xyz/playedu/points/service/impl/PointRedemptionServiceImpl.java
+@@ -32,10 +32,10 @@
+ import xyz.playedu.points.mapper.PointCodeMapper;
+ import xyz.playedu.points.mapper.PointProductMapper;
+ import xyz.playedu.points.mapper.PointRedemptionMapper;
+-import xyz.playedu.points.service.PointBalanceChange;
+-import xyz.playedu.points.service.PointBalanceChangeResult;
+ import xyz.playedu.points.service.PointBalanceService;
+ import xyz.playedu.points.service.PointRedemptionService;
++import xyz.playedu.points.types.PointBalanceChange;
++import xyz.playedu.points.types.PointBalanceChangeResult;
+ 
+ /** Default persistence service for completed points redemptions. */
+ @Service
+--- a/playedu-api/playedu-points/src/main/java/xyz/playedu/points/service/impl/PointBalanceServiceImpl.java
++++ b/playedu-api/playedu-points/src/main/java/xyz/playedu/points/service/impl/PointBalanceServiceImpl.java
+@@ -20,12 +20,12 @@
+ import org.springframework.transaction.annotation.Transactional;
+ import xyz.playedu.points.domain.PointLedger;
+ import xyz.playedu.points.domain.PointLedgerType;
++import xyz.playedu.points.exception.PointBalanceException;
+ import xyz.playedu.points.mapper.PointBalanceMapper;
+ import xyz.playedu.points.mapper.PointLedgerMapper;
+-import xyz.playedu.points.service.PointBalanceChange;
+-import xyz.playedu.points.service.PointBalanceChangeResult;
+-import xyz.playedu.points.service.PointBalanceException;
+ import xyz.playedu.points.service.PointBalanceService;
++import xyz.playedu.points.types.PointBalanceChange;
++import xyz.playedu.points.types.PointBalanceChangeResult;
+ 
+ /** Transactional engine for changes to {@code users.credit1}. */
+ @Service
+--- a/playedu-api/playedu-api/src/main/java/xyz/playedu/api/controller/backend/PointAdminController.java
++++ b/playedu-api/playedu-api/src/main/java/xyz/playedu/api/controller/backend/PointAdminController.java
+@@ -47,14 +47,14 @@
+ import xyz.playedu.points.domain.PointProduct;
+ import xyz.playedu.points.domain.PointProductStatus;
+ import xyz.playedu.points.domain.PointRedemption;
+-import xyz.playedu.points.service.PointBalanceChange;
+-import xyz.playedu.points.service.PointBalanceChangeResult;
+ import xyz.playedu.points.service.PointBalanceService;
+ import xyz.playedu.points.service.PointCodeService;
+ import xyz.playedu.points.service.PointLedgerService;
+ import xyz.playedu.points.service.PointProductService;
+ import xyz.playedu.points.service.PointRedemptionService;
+ import xyz.playedu.points.service.PointSourceKeys;
++import xyz.playedu.points.types.PointBalanceChange;
++import xyz.playedu.points.types.PointBalanceChangeResult;
+ import xyz.playedu.points.types.PointCodeImportResult;
+ 
+ /** Super-admin-only operations for points, products and voucher-code inventory. */
