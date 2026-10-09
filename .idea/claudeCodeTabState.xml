@@ -6,9 +6,10 @@
         <entry key="0">
           <value>
             <TabSessionState>
-              <option name="provider" value="claude" />
+              <option name="provider" value="codex" />
+              <option name="sessionId" value="01a0b2f8-8b44-7c73-9c42-1ddfad797496" />
               <option name="cwd" value="C:\Users\86198\Desktop\play" />
-              <option name="model" value="claude-sonnet-5" />
+              <option name="model" value="gpt-5.6-sol" />
               <option name="permissionMode" value="default" />
             </TabSessionState>
           </value>
