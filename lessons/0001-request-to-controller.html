@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>第 1 课 · 从请求地址找到后端方法</title>
+  <link rel="stylesheet" href="../assets/teach.css">
+  <script src="../assets/teach-quiz.js" defer></script>
+</head>
+<body><main>
+  <header>
+    <div class="eyebrow">PLAYEDU / 后端实习实践 / 01</div>
+    <h1>从请求地址找到后端方法</h1>
+    <p class="meta">8～10 分钟 · 第一课 · 不依赖应用已启动</p>
+    <p class="callout">本课的一个收获：看到课程详情请求，就能找出处理方法、传入的课程编号，以及下一步该跟的业务调用。这是面试讲解请求链的起点。</p>
+  </header>
+
+  <section>
+    <h2>1. 只看这几行</h2>
+    <p>摘自当前项目 <a href="../playedu-api/playedu-api/src/main/java/xyz/playedu/api/controller/frontend/CourseController.java">CourseController.java</a> 第 37～60 行，省略无关字段、注解和后续方法体。它是学员端课程接口。</p>
+    <pre><code>@RestController
+@RequestMapping("/api/v1/course")
+public class CourseController {
+    // 省略字段
+    @GetMapping("/{id}")
+    public JsonResponse detail(@PathVariable(name = "id") Integer id) {
+        Course course = courseService.findOrFail(id);
+        // 省略后续响应组装
+    }
+}</code></pre>
+    <p>这个片段用于阅读，不是可独立编译的完整类。</p>
+    <table>
+      <thead><tr><th>代码线索</th><th>本课只记这一件事</th></tr></thead>
+      <tbody>
+        <tr><td><code>@RequestMapping</code></td><td>类上给出公共路径 <code>/api/v1/course</code>。</td></tr>
+        <tr><td><code>@GetMapping</code></td><td>方法上指定 GET 请求和剩余路径 <code>/{id}</code>。</td></tr>
+        <tr><td><code>@PathVariable</code></td><td>把路径中的 id 绑定到 Java 参数 id，并转换为 Integer。</td></tr>
+      </tbody>
+    </table>
+    <p>以上基础规则见 <a href="https://docs.spring.io/spring-framework/reference/web/webmvc/mvc-controller/ann-requestmapping.html">Spring 官方请求映射文档</a>。这里只讨论映射；真实请求仍需经过相关拦截器等处理，课程是否存在也要由业务代码判断。</p>
+  </section>
+
+  <section>
+    <h2>2. 看懂一个例子</h2>
+    <p>假设请求是 <code>GET /api/v1/course/7</code>：</p>
+    <pre><code>公共路径 /api/v1/course + 方法路径 /{id}
+                  ↓ 用 7 替换 id
+CourseController.detail，参数 id = 7
+                  ↓ 方法体的第一步
+courseService.findOrFail(7)</code></pre>
+    <p>请求路径不包含 Java 方法名 detail。方法名和对外 URL 可以不同。上面只是定位和传参结果，不保证课程 7 存在，也不保证请求已通过访问检查。</p>
+  </section>
+
+  <section>
+    <h2>3. 换一个编号，自己判断</h2>
+    <p>先尽量不回看例子。输入答案后立即获得反馈；答案不会发送给助手或保存到服务器。</p>
+    <noscript><p>浏览器未启用 JavaScript。请直接把下面三题的答案发给助手检查。</p></noscript>
+    <form class="quiz" data-answer="GET /api/v1/course/42" data-success="正确。你同时识别了 HTTP 方法、公共路径和路径变量。" data-hint="再看两层注解：请求方法来自 GetMapping，路径来自类路径加方法路径；用课程编号替换占位符。">
+      <label for="route">① 查看编号 42 的课程，请写出「HTTP 方法 + 空格 + 请求路径」，不含域名。</label>
+      <input id="route" autocomplete="off" spellcheck="false" aria-describedby="route-feedback">
+      <button type="submit">检查判断</button><p class="feedback" id="route-feedback" aria-live="polite"></p>
+    </form>
+    <form class="quiz" data-answer="42" data-success="正确。路径中的编号绑定到 Integer id。" data-hint="PathVariable 读取路径里 id 对应的那一段；这不是查询参数，也不是方法名称。">
+      <label for="id">② 请求 GET /api/v1/course/42 时，Java 参数 id 的值是多少？</label>
+      <input id="id" autocomplete="off" inputmode="numeric" aria-describedby="id-feedback">
+      <button type="submit">检查判断</button><p class="feedback" id="id-feedback" aria-live="polite"></p>
+    </form>
+    <form class="quiz" data-answer="courseService.findOrFail(42)|courseService.findOrFail(42);" data-success="正确。下一课可以沿这个调用继续到业务实现与 SQL。" data-hint="关注方法体的第一行；接收调用的对象是 courseService，把刚才的 id 值代入。">
+      <label for="call">③ 将 id 替换为具体值，写出方法体里的第一个业务调用。</label>
+      <input id="call" autocomplete="off" spellcheck="false" aria-describedby="call-feedback">
+      <button type="submit">检查判断</button><p class="feedback" id="call-feedback" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <section>
+    <h2>4. 关闭例子后，做一次迁移</h2>
+    <p>在聊天里回答：如果只把类上的公共路径改成 <code>/api/v2/course</code>，编号 19 的课程对应什么请求？Java 方法名需要跟着改变吗？说明原因。</p>
+    <p>如果不知道 GET、Java 参数或注解是什么意思，直接告诉助手卡在哪一步。无需猜，也无需一次学完所有 Spring 原理。</p>
+    <p>明天复习：不看笔记，重新说明类路径、方法路径和 PathVariable 的关系。能解释和迁移之后，才记录为已掌握。</p>
+  </section>
+
+  <nav>
+    <a href="0002-find-course-or-fail.html">下一课：课程查询与异常</a>
+    <a href="../reference/0001-route-glossary.html">路由术语速查</a>
+    <a href="../docs/backend-intern-learning-plan.md">一周学习计划</a>
+    <a href="../MISSION.md">学习目标</a>
+  </nav>
+  <footer>
+    <p>推荐原始阅读：<a href="https://spring.io/guides/gs/rest-service/">Spring 官方 REST 入门</a>，只看 Controller 示例与 GetMapping 说明，约 3 分钟。可随时在聊天中追问，或把三题答案和迁移题一起发给助手。</p>
+    <p>来源：当前 CourseController.java；Spring 官方请求映射文档。课程展示与练习完成不自动证明长期掌握。</p>
+  </footer>
+</main></body>
+</html>

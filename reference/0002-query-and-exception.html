@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>速查 · 查询与异常</title><link rel="stylesheet" href="../assets/teach.css"></head>
+<body><main><div class="eyebrow">PLAYEDU / 速查 02</div><h1>查询与异常</h1>
+<table><thead><tr><th>线索</th><th>本课含义</th></tr></thead><tbody>
+<tr><td>Service / ServiceImpl</td><td>接口声明操作，具体实现提供执行代码。</td></tr>
+<tr><td>eq("id", id)</td><td>查询条件：数据库 id 列等于方法参数 id。</td></tr>
+<tr><td>getOne(条件)</td><td>MyBatis-Plus 查询单个实体的操作。无匹配记录时为空；默认多个匹配结果会抛异常。本课按主键查询。</td></tr>
+<tr><td>null</td><td>没有对象引用；不等同于编号 0 或字段为空字符串。</td></tr>
+<tr><td>return course</td><td>正常结束方法，返回课程对象。</td></tr>
+<tr><td>throws / throw</td><td>throws 声明可能抛出的异常；throw 执行抛异常动作，中断当前方法正常流程。</td></tr>
+</tbody></table>
+<p class="callout">findOrFail：查询 → 找不到就抛异常 → 找到则返回。这个名称是项目的方法命名，不是框架自动赋予的功能。</p>
+<p>来源：<a href="../playedu-api/playedu-course/src/main/java/xyz/playedu/course/service/impl/CourseServiceImpl.java">项目源码</a>、<a href="https://baomidou.com/guides/data-interface/">MyBatis-Plus getOne</a>、<a href="https://baomidou.com/guides/wrapper/">条件构造器</a>。</p>
+<nav><a href="../lessons/0002-find-course-or-fail.html">回第二课练习</a><a href="0001-route-glossary.html">路由术语</a></nav><footer>存在性检查与权限检查是不同问题。异常响应要继续跟项目异常处理代码。</footer></main></body></html>
