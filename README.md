@@ -1,4 +1,25 @@
-<p align="center"><a href="https://www.sslbear.com?from=playedu">SSLBear - 云服务域名证书守护者|7x24小时监护让域名证书永不过期</a></p>
+# PlayEdu
+
+企业内部培训平台，基于 Java 17、Spring Boot 3、React 18、MySQL 与 Redis。
+
+本仓库基于 [PlayEdu 开源项目](https://github.com/PlayEdu/PlayEdu)，包含管理后台、PC 学员端、H5 学员端，以及分布式学习状态和积分兑换相关实现。原项目版权与许可证保持不变。
+
+[贡献指南](CONTRIBUTING.md) · [项目文档](docs/README.md) · [更新记录](CHANGELOG.md) · [安全报告](.github/SECURITY.md) · [许可证](LICENSE)
+
+## 项目结构
+
+| 目录 | 用途 |
+| --- | --- |
+| `playedu-api/` | Maven 多模块后端：API、common、system、course、resource、points |
+| `playedu-admin/` | React 管理后台 |
+| `playedu-pc/` | React PC 学员端 |
+| `playedu-h5/` | React H5 学员端 |
+| `docker/` | MySQL、Nginx 与双实例验收配置 |
+| `scripts/` | 可复用验收脚本 |
+| `docs/` | 架构决策、开发指南与验收文档 |
+| `.scratch/` | 功能规格、任务与验证记录；临时实验由忽略规则排除 |
+
+## 上游项目
 
 <p align="center">
 <img src="https://meedu.cloud.oss.meedu.vip/playedu/%E5%A4%B4%E5%9B%BE.jpg"/>
@@ -19,13 +40,22 @@ PlayEdu 是由白书科技团队经营多年线上教培领域打造出的一款
 拉取代码：
 
 ```
-git clone --branch main https://gitee.com/playeduxyz/playedu.git playedu
+git clone https://github.com/yjhaes/PlayEdu.git playedu
+cd playedu
 ```
 
-构建镜像：
+准备配置（PowerShell 使用 `Copy-Item .env.example .env`）：
+
+```sh
+cp .env.example .env
+```
+
+编辑 `.env`，设置数据库密码、JWT 密钥和独立的 `PLAYEDU_POINTS_CODE_ENCRYPTION_KEY`（至少 16 字节）。需要本机已启动 Docker 引擎并安装 Compose 插件。
+
+构建镜像并启动应用、MySQL 和 Redis：
 
 ```
-cd playedu && docker-compose up -d
+docker compose up -d --build
 ```
 
 命令执行完成以后，打开您的浏览器，输入 `http://localhost:9900` 即可访问后台管理界面，默认管理员账号和密码 `admin@playedu.xyz / playedu` 。

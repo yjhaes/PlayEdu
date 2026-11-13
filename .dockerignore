@@ -24,3 +24,25 @@
 **/.idea/
 **/.vscode/
 **/*.log
+
+# Local metadata, secrets and non-runtime materials
+**/.env
+**/.env.*
+!**/.env.example
+/.codegraph/
+/.pnpm-store/
+/.mimosa/
+/.obsidian/
+/.workbuddy/
+/.zcode/
+/.zcodeignore
+/.scratch/
+/learning-records/
+/lessons/
+/reference/
+/assets/
+/未命名/
+/docs/
+/MISSION.md
+/NOTES.md
+/RESOURCES.md

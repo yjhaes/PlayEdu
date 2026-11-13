@@ -2,3 +2,53 @@
 *.log
 .env
 .scratch/redis-distributed-learning/evidence/
+
+# Dependencies and generated output
+node_modules/
+.pnpm-store/
+dist/
+coverage/
+*.tsbuildinfo
+target/
+
+# Local environment (keep configuration examples)
+.env.*
+!.env.example
+!.env.*.example
+
+# Editor settings and local assistant state
+.idea/
+.vscode/
+*.iml
+.obsidian/
+.mimosa/
+.workbuddy/
+.zcode/
+.zcodeignore
+.codegraph/
+Thumbs.db
+
+# Personal learning material; retained locally
+/MISSION.md
+/NOTES.md
+/RESOURCES.md
+/learning-records/
+/lessons/
+/reference/
+/assets/
+/未命名/
+/docs/daily-notes/
+/docs/daily-learning-note-template.md
+/docs/architecture-explorer/
+/docs/backend-intern-learning-plan.md
+/docs/git-push-protection-2026-09-18.md
+
+# Disposable experiments and refactoring snapshots (keep feature specs/issues)
+/.scratch/hatch-pet/
+/.scratch/build-validation/
+/.scratch/kurisu-v2/
+/.scratch/ternary-expressions/
+/.scratch/points-structure-cleanup/before/
+/.scratch/points-structure-cleanup/*.py
+/.scratch/points-structure-cleanup/*.patch
+/.scratch/points-structure-cleanup/affected-files.txt

@@ -140,6 +140,12 @@
             <artifactId>sa-token-jwt</artifactId>
             <version>1.39.0</version>
         </dependency>
+        <!-- Share JWT Simple login sessions across application instances. -->
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-redis-jackson</artifactId>
+            <version>1.39.0</version>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
