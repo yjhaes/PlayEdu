@@ -1,8 +1,8 @@
-# PlayEdu
+# PlayEdu 二次开发项目
 
-企业内部培训平台，基于 Java 17、Spring Boot 3、React 18、MySQL 与 Redis。
+基于 PlayEdu 开源版进行二次开发的企业培训平台，重点扩展分布式学习状态管理、实时学习排行榜与积分兑换功能。
 
-本仓库基于 [PlayEdu 开源项目](https://github.com/PlayEdu/PlayEdu)，包含管理后台、PC 学员端、H5 学员端，以及分布式学习状态和积分兑换相关实现。原项目版权与许可证保持不变。
+本仓库由 yjhaes 在 [PlayEdu 开源项目](https://github.com/PlayEdu/PlayEdu)基础上维护，保留管理后台、PC 学员端和 H5 学员端。上游提供基础培训业务，本仓库在此基础上扩展业务功能与后端实现；这是个人维护的二次开发版本，与上游官方版本分别维护。原项目版权声明、页面版权信息与许可证保持不变。
 
 [贡献指南](CONTRIBUTING.md) · [项目文档](docs/README.md) · [更新记录](CHANGELOG.md) · [安全报告](.github/SECURITY.md) · [许可证](LICENSE)
 
@@ -19,21 +19,29 @@
 | `docs/` | 架构决策、开发指南与验收文档 |
 | `.scratch/` | 功能规格、任务与验证记录；临时实验由忽略规则排除 |
 
-## 上游项目
+## 功能来源与二次开发范围
 
-<p align="center">
-<img src="https://meedu.cloud.oss.meedu.vip/playedu/%E5%A4%B4%E5%9B%BE.jpg"/>
-</p>
+| 来源 | 内容 |
+| --- | --- |
+| 上游基础功能 | 部门与学员管理、课程与课时管理、在线视频学习、学习进度追踪、资源管理及三端页面 |
+| 分布式学习状态扩展 | 使用 Redis 管理跨实例锁、共享限流、登录失败计数和活跃学习租约，学习事实保存在 MySQL |
+| 实时学习排行榜扩展 | 以 Redis 提供每日学习榜查询，支持从 MySQL 重建榜单 |
+| 积分业务扩展 | 首次完成课程奖励、积分流水、商品与兑换码库存、积分兑换，以及管理后台和 PC/H5 积分中心 |
+| 工程与验收配套 | Docker Compose 部署、双 API 实例验收拓扑、验收脚本及架构决策文档 |
 
-<h4 align="center">
-  <a href="http://www.playeduos.com">PlayEdu官网</a> |
-  <a href="https://www.playeduos.com/function.html">PlayEdu商业版</a> |
-  <a href="https://faq.playeduos.com/opensource-maintenance-handbook/article/t08o2iHfLR">部署文档</a> |
-  <a href="https://www.playeduos.com/demo.html">开源版演示站</a>
-</h4>
+技术栈：Java 17、Spring Boot 3、MyBatis-Plus、MySQL、Redis / Redisson、React 18、TypeScript、Vite。
 
-PlayEdu 是由白书科技团队经营多年线上教培领域打造出的一款业内领先的线上培训解决方案。PlayEdu 基于 Java + MySQL 开发，采用前后端分离模式，前端核心框架为 React18，后端核心框架为 SpringBoot3。开源版本提供部门管理、学员管理、在线视频学习、学员进度追踪、视频私有化存储等基础培训功能。  
-**针对企业级培训场景，我们精心打造了“功能更多、响应更快、并发更强”的企业版本，满足企业多样化的培训需求。企业版本支持音视频学习、文档在线预览、线上考试、学习任务等多种学习方式，并提供多重安全防护，如视频转码加密、防盗链、学习防快进、防挂机等。同时，我们集成了企业微信、钉钉、飞书等主流办公系统，帮助企业快速部署专属培训平台！**
+实现边界见[领域上下文](CONTEXT.md)与[架构决策](docs/adr/)，积分业务验收见[积分上线检查清单](docs/points-launch-checklist.md)。功能说明不代表当前环境已完成全部集成验收，验证应以实际测试结果为准。
+
+## 上游来源
+
+PlayEdu 原项目由白书科技团队开发。感谢上游提供基础培训平台与三端界面。
+
+- [上游源码](https://github.com/PlayEdu/PlayEdu)
+- [PlayEdu 官网](https://www.playeduos.com)
+- [上游部署文档](https://faq.playeduos.com/opensource-maintenance-handbook/article/t08o2iHfLR)
+
+本仓库的部署方式和新增功能以本文及仓库内文档为准。
 
 ## 🚀 快速上手
 
@@ -106,9 +114,11 @@ pwsh -NoProfile -File scripts/acceptance/run.ps1 -Action stop
 
 ## 🔰️ 软件安全
 
-安全问题应该通过邮件私下报告给 tengyongzhi@playeduos.com。 您将在 24 小时内收到回复，如果因为某些原因您没有收到回复，请通过回复原始邮件的方式跟进，以确保我们收到了您的原始邮件。
+上游项目的安全报告渠道见[安全说明](.github/SECURITY.md)。反馈时请注明使用的是本二次开发仓库及对应提交版本，避免混淆问题来源；不要在公开 issue 中披露漏洞利用细节或敏感数据。
 
 ## 👁 界面预览
+
+以下图片来自上游项目，用于展示基础界面，不包含本仓库新增的积分中心等功能。当前页面以本仓库实际运行结果为准。
 
 ![学员端口界面预览](https://meedu.cloud.oss.meedu.vip/playedu/%E5%89%8D%E5%8F%B0%E9%A1%B5%E9%9D%A2.jpg)
 
